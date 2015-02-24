@@ -420,10 +420,11 @@ class Template:
             product_data
         )
         product_template_values.update({
+            'cost_price': Decimal(product_data.get('cost') or 0.00),
             'products': [('write', map(int, self.products), {
                 'description': product_data['description'],
                 'code': product_data['sku'],
-            })]
+            })],
         })
         self.write([self], product_template_values)
 
