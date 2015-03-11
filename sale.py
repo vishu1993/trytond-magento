@@ -456,7 +456,7 @@ class Sale:
             values.update({
                 'sale': self.id,
                 'magento_id': int(item['item_id']),
-                'description': item['name'],
+                'description': item['name'] or product.name,
                 'unit_price': Decimal(item['price']),
                 'unit': unit.id,
                 'quantity': Decimal(item['qty_ordered']),
