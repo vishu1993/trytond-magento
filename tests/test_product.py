@@ -73,7 +73,7 @@ class TestProduct(TestBase):
             categories_before_import = Category.search([], count=True)
 
             category_tree = load_json('categories', 'category_tree')
-            with txn.set_context({'magento_instance': self.instance1.id}):
+            with txn.set_context({'magento_channel': self.channel1.id}):
                 Category.create_tree_using_magento_data(category_tree)
 
                 categories_after_import = Category.search([], count=True)
@@ -97,12 +97,12 @@ class TestProduct(TestBase):
 
                 self.assertTrue(
                     MagentoCategory.search([
-                        ('instance', '=', self.instance1)
+                        ('channel', '=', self.channel1)
                     ], count=True) > 0
                 )
                 self.assertTrue(
                     MagentoCategory.search([
-                        ('instance', '=', self.instance2)
+                        ('channel', '=', self.channel2)
                     ], count=True) == 0
                 )
 
@@ -120,7 +120,7 @@ class TestProduct(TestBase):
             category_data = load_json('categories', '8')
 
             with txn.set_context({
-                'magento_instance': self.instance1,
+                'magento_channel': self.channel1,
                 'magento_website': self.website1,
                 'company': self.company,
             }):
@@ -168,7 +168,7 @@ class TestProduct(TestBase):
             self.setup_defaults()
             product_data = load_json('products', '17-wo-category')
             with txn.set_context({
-                'magento_instance': self.instance1,
+                'magento_channel': self.channel1,
                 'magento_website': self.website1,
                 'company': self.company,
             }):
@@ -194,7 +194,7 @@ class TestProduct(TestBase):
             product_data = load_json('products', '135')
 
             with txn.set_context({
-                'magento_instance': self.instance1,
+                'magento_channel': self.channel1,
                 'magento_website': self.website1,
                 'company': self.company,
             }):
@@ -221,7 +221,7 @@ class TestProduct(TestBase):
             category_data = load_json('categories', 22)
             product_data = load_json('products', 54)
             with txn.set_context({
-                'magento_instance': self.instance1,
+                'magento_channel': self.channel1,
                 'magento_website': self.website1,
                 'company': self.company,
             }):
@@ -246,7 +246,7 @@ class TestProduct(TestBase):
             self.setup_defaults()
             product_data = load_json('products', '170')
             with txn.set_context({
-                'magento_instance': self.instance1,
+                'magento_channel': self.channel1,
                 'magento_website': self.website1,
                 'company': self.company,
             }):
@@ -270,7 +270,7 @@ class TestProduct(TestBase):
             self.setup_defaults()
 
             with Transaction().set_context({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_website': self.website1.id,
                 'magento_store': self.store,
                 'company': self.company,
@@ -328,7 +328,7 @@ class TestProduct(TestBase):
         with Transaction().start(DB_NAME, USER, CONTEXT):
             self.setup_defaults()
             with Transaction().set_context({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_website': self.website1.id,
                 'magento_store': self.store,
                 'company': self.company,
@@ -385,7 +385,7 @@ class TestProduct(TestBase):
             self.setup_defaults()
 
             with Transaction().set_context({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_website': self.website1.id,
                 'company': self.company,
             }):
@@ -418,7 +418,7 @@ class TestProduct(TestBase):
             self.setup_defaults()
             context = User.get_preferences(context_only=True)
             context.update({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_website': self.website1.id,
                 'magento_store': self.store.id,
                 'company': self.company.id,
@@ -464,7 +464,7 @@ class TestProduct(TestBase):
             self.setup_defaults()
 
             with txn.set_context({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_website': self.website1.id,
                 'magento_attribute_set': 1,
                 'company': self.company.id,

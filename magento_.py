@@ -166,7 +166,8 @@ class InstanceWebsite(ModelSQL, ModelView):
 
                 # Update stock information to magento
                 with magento.Inventory(
-                    channel.url, channel.api_user, channel.api_key
+                    channel.magento_url, channel.magento_api_user,
+                    channel.magento_api_key
                 ) as inventory_api:
                     inventory_api.update(
                         magento_product_template.magento_id, product_data
@@ -303,7 +304,8 @@ class WebsiteStore(ModelSQL, ModelView):
 
             # Update stock information to magento
             with magento.ProductTierPrice(
-                channel.url, channel.api_user, channel.api_key
+                channel.magento_url, channel.magento_api_user,
+                channel.magento_api_key
             ) as tier_price_api:
                 tier_price_api.update(
                     mag_product_template.magento_id, price_data
@@ -487,7 +489,8 @@ class WebsiteStoreView(ModelSQL, ModelView):
                 self.raise_user_error("states_not_found")
 
             with magento.Order(
-                channel.url, channel.api_user, channel.api_key
+                channel.magento_url, channel.magento_api_user,
+                channel.magento_api_key
             ) as order_api:
                 # Filter orders with date and store_id using list()
                 # then get info of each order using info()
@@ -630,7 +633,8 @@ class WebsiteStoreView(ModelSQL, ModelView):
                         sales.pop(sale)
                         continue
                     with magento.Shipment(
-                        channel.url, channel.api_user, channel.api_key
+                        channel.magento_url, channel.magento_api_user,
+                        channel.magento_api_key
                     ) as shipment_api:
                         item_qty_map = {}
                         for move in shipment.outgoing_moves:

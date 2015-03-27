@@ -91,7 +91,8 @@ class Category:
             )
 
             with magento.Category(
-                channel.url, channel.api_user, channel.api_key
+                channel.magento_url, channel.magento_api_user,
+                channel.magento_api_key
             ) as category_api:
                 category_data = category_api.info(magento_id)
 
@@ -249,7 +250,8 @@ class Template:
 
             channel = website.channel
             with magento.Product(
-                    channel.url, channel.api_user, channel.api_key
+                channel.magento_url, channel.magento_api_user,
+                channel.magento_api_key
             ) as product_api:
                 product_data = product_api.info(magento_id)
 
@@ -335,8 +337,10 @@ class Template:
             'default_uom': website.default_uom.id,
             'salable': True,
             'sale_uom': website.default_uom.id,
-            'account_expense': website.channel.default_account_expense.id,
-            'account_revenue': website.channel.default_account_revenue.id,
+            'account_expense':
+                website.channel.magento_default_account_expense.id,
+            'account_revenue':
+                website.channel.magento_default_account_revenue.id,
         }
 
     @classmethod
@@ -398,7 +402,8 @@ class Template:
         channel = website.channel
 
         with magento.Product(
-            channel.url, channel.api_user, channel.api_key
+            channel.magento_url, channel.magento_api_user,
+            channel.magento_api_key
         ) as product_api:
             magento_product_template, = MagentoProductTemplate.search([
                 ('template', '=', self.id),
@@ -482,7 +487,8 @@ class Template:
         channel = website.channel
 
         with magento.Product(
-            channel.url, channel.api_user, channel.api_key
+            channel.magento_url, channel.magento_api_user,
+            channel.magento_api_key
         ) as product_api:
             # We create only simple products on magento with the default
             # attribute set
@@ -723,7 +729,8 @@ class ImportCatalog(Wizard):
         Transaction().set_context({'magento_channel': channel.id})
 
         with magento.Category(
-            channel.url, channel.api_user, channel.api_key
+            channel.magento_url, channel.magento_api_user,
+            channel.magento_api_key
         ) as category_api:
             category_tree = category_api.tree(website.magento_root_category_id)
             Category.create_tree_using_magento_data(category_tree)
@@ -742,7 +749,8 @@ class ImportCatalog(Wizard):
             'magento_website': website.id
         })
         with magento.Product(
-            channel.url, channel.api_user, channel.api_key
+            channel.magento_url, channel.magento_api_user,
+            channel.magento_api_key
         ) as product_api:
             magento_products = product_api.list()
 
@@ -776,7 +784,8 @@ class ExportCatalogStart(ModelView):
         channel = website.channel
 
         with magento.ProductAttributeSet(
-            channel.url, channel.api_user, channel.api_key
+            channel.magento_url, channel.magento_api_user,
+            channel.magento_api_key
         ) as attribute_set_api:
             attribute_sets = attribute_set_api.list()
 
