@@ -229,11 +229,11 @@ class TestBase(unittest.TestCase):
         )
 
         # Create payment term
-        payment_term, = self.PaymentTerm.create([{
+        self.payment_term, = self.PaymentTerm.create([{
             'name': 'Direct',
             'lines': [('create', [{'type': 'remainder'}])]
         }])
-        price_list, = self.PriceList.create([{
+        self.price_list, = self.PriceList.create([{
             'name': 'PL 1',
             'company': self.company.id,
             'lines': [
@@ -242,7 +242,7 @@ class TestBase(unittest.TestCase):
                 }])
             ],
         }])
-        warehouse, = self.Location.search([
+        self.warehouse, = self.Location.search([
             ('type', '=', 'warehouse')
         ], limit=1)
 
@@ -250,15 +250,14 @@ class TestBase(unittest.TestCase):
         with Transaction().set_context({'company': self.company.id}):
             self.channel1, = self.Channel.create([{
                 'name': 'Test Channel 1',
-                'price_list': price_list,
+                'price_list': self.price_list,
                 'invoice_method': 'order',
                 'shipment_method': 'order',
                 'source': 'manual',
                 'create_users': [('add', [USER])],
-                'warehouse': warehouse,
-                'payment_term': payment_term,
+                'warehouse': self.warehouse,
+                'payment_term': self.payment_term,
                 'company': self.company.id,
-
                 'magento_url': 'some test url 1',
                 'magento_api_user': 'admin',
                 'magento_api_key': 'testkey',
@@ -269,13 +268,13 @@ class TestBase(unittest.TestCase):
             }])
             self.channel2, = self.Channel.create([{
                 'name': 'Test channel 2',
-                'price_list': price_list,
+                'price_list': self.price_list,
                 'invoice_method': 'order',
                 'shipment_method': 'order',
                 'source': 'manual',
                 'create_users': [('add', [USER])],
-                'warehouse': warehouse,
-                'payment_term': payment_term,
+                'warehouse': self.warehouse,
+                'payment_term': self.payment_term,
                 'company': self.company.id,
 
                 'magento_url': 'some test url 2',

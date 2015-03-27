@@ -38,19 +38,27 @@ class TestWebsiteImport(TestBase):
         with Transaction().start(DB_NAME, USER, CONTEXT) as txn:
             self.setup_defaults()
             with txn.set_context({'company': self.company.id}):
-                instance, = self.Instance.create([{
+                channel, = self.Channel.create([{
                     'name': 'Test Instance',
-                    'url': 'some test url',
-                    'api_user': 'admin',
-                    'api_key': 'testkey',
-                    'default_account_expense':
+                    'price_list': self.price_list,
+                    'invoice_method': 'order',
+                    'shipment_method': 'order',
+                    'source': 'manual',
+                    'create_users': [('add', [USER])],
+                    'warehouse': self.warehouse,
+                    'payment_term': self.payment_term,
+                    'company': self.company.id,
+                    'magento_url': 'some test url 1',
+                    'magento_api_user': 'admin',
+                    'magento_api_key': 'testkey',
+                    'magento_default_account_expense':
                         self.get_account_by_kind('expense'),
-                    'default_account_revenue':
+                    'magento_default_account_revenue':
                         self.get_account_by_kind('revenue'),
                 }])
                 websites_before_import = self.Website.search([])
                 self.Website.find_or_create(
-                    instance, load_json('core', 'website')
+                    channel, load_json('core', 'website')
                 )
                 websites_after_import = self.Website.search([])
 
@@ -65,18 +73,26 @@ class TestWebsiteImport(TestBase):
         with Transaction().start(DB_NAME, USER, CONTEXT) as txn:
             self.setup_defaults()
             with txn.set_context({'company': self.company.id}):
-                instance, = self.Instance.create([{
+                channel, = self.Channel.create([{
                     'name': 'Test Instance',
-                    'url': 'some test url',
-                    'api_user': 'admin',
-                    'api_key': 'testkey',
-                    'default_account_expense':
+                    'price_list': self.price_list,
+                    'invoice_method': 'order',
+                    'shipment_method': 'order',
+                    'source': 'manual',
+                    'create_users': [('add', [USER])],
+                    'warehouse': self.warehouse,
+                    'payment_term': self.payment_term,
+                    'company': self.company.id,
+                    'magento_url': 'some test url 1',
+                    'magento_api_user': 'admin',
+                    'magento_api_key': 'testkey',
+                    'magento_default_account_expense':
                         self.get_account_by_kind('expense'),
-                    'default_account_revenue':
+                    'magento_default_account_revenue':
                         self.get_account_by_kind('revenue'),
                 }])
                 website = self.Website.find_or_create(
-                    instance, load_json('core', 'website')
+                    channel, load_json('core', 'website')
                 )
 
                 stores_before_import = self.Store.search([])
@@ -94,18 +110,26 @@ class TestWebsiteImport(TestBase):
         with Transaction().start(DB_NAME, USER, CONTEXT) as txn:
             self.setup_defaults()
             with txn.set_context({'company': self.company.id}):
-                instance, = self.Instance.create([{
+                channel, = self.Channel.create([{
                     'name': 'Test Instance',
-                    'url': 'some test url',
-                    'api_user': 'admin',
-                    'api_key': 'testkey',
-                    'default_account_expense':
+                    'price_list': self.price_list,
+                    'invoice_method': 'order',
+                    'shipment_method': 'order',
+                    'source': 'manual',
+                    'create_users': [('add', [USER])],
+                    'warehouse': self.warehouse,
+                    'payment_term': self.payment_term,
+                    'company': self.company.id,
+                    'magento_url': 'some test url 1',
+                    'magento_api_user': 'admin',
+                    'magento_api_key': 'testkey',
+                    'magento_default_account_expense':
                         self.get_account_by_kind('expense'),
-                    'default_account_revenue':
+                    'magento_default_account_revenue':
                         self.get_account_by_kind('revenue'),
                 }])
                 website = self.Website.find_or_create(
-                    instance, load_json('core', 'website')
+                    channel, load_json('core', 'website')
                 )
                 store = self.Store.find_or_create(
                     website, load_json('core', 'store')

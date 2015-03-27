@@ -28,8 +28,8 @@ def suite():
     test_suite.addTests([
         #unittest.TestLoader().loadTestsFromTestCase(TestViewDepend),
         #unittest.TestLoader().loadTestsFromTestCase(TestModels),
-        unittest.TestLoader().loadTestsFromTestCase(TestCountry),
-        unittest.TestLoader().loadTestsFromTestCase(TestParty),
+        #unittest.TestLoader().loadTestsFromTestCase(TestCountry),
+        #unittest.TestLoader().loadTestsFromTestCase(TestParty),
         unittest.TestLoader().loadTestsFromTestCase(TestWebsiteImport),
         #unittest.TestLoader().loadTestsFromTestCase(TestProduct),
         #unittest.TestLoader().loadTestsFromTestCase(TestSale),
