@@ -82,16 +82,16 @@ class Category:
         :param parent: Browse record of Parent if present, else None
         :returns: Active record of category found/created
         """
-        Instance = Pool().get('magento.instance')
+        Channel = Pool().get('sale.channel')
 
         category = cls.find_using_magento_id(magento_id)
         if not category:
-            instance = Instance(
-                Transaction().context.get('magento_instance')
+            channel = Channel(
+                Transaction().context.get('magento_channel')
             )
 
             with magento.Category(
-                instance.url, instance.api_user, instance.api_key
+                channel.url, channel.api_user, channel.api_key
             ) as category_api:
                 category_data = category_api.info(magento_id)
 
@@ -113,7 +113,7 @@ class Category:
 
         records = MagentoCategory.search([
             ('magento_id', '=', int(category_data['category_id'])),
-            ('instance', '=', Transaction().context.get('magento_instance'))
+            ('channel', '=', Transaction().context.get('magento_channel'))
         ])
         return records and records[0].category or None
 
@@ -130,7 +130,7 @@ class Category:
 
         records = MagentoCategory.search([
             ('magento_id', '=', magento_id),
-            ('instance', '=', Transaction().context.get('magento_instance'))
+            ('channel', '=', Transaction().context.get('magento_channel'))
         ])
 
         return records and records[0].category or None
@@ -149,7 +149,7 @@ class Category:
             'parent': parent,
             'magento_ids': [('create', [{
                 'magento_id': int(category_data['category_id']),
-                'instance': Transaction().context.get('magento_instance'),
+                'channel': Transaction().context.get('magento_channel'),
             }])],
         }])
 
@@ -161,15 +161,15 @@ class MagentoInstanceCategory(ModelSQL, ModelView):
     Magento Instance - Product Category Store
 
     This model keeps a record of a category's association with an Instance
-    and the ID of the category on that instance
+    and the ID of the category on that channel
     """
     __name__ = "magento.instance.product_category"
 
     magento_id = fields.Integer(
         'Magento ID', readonly=True, required=True, select=True
     )
-    instance = fields.Many2One(
-        'magento.instance', 'Magento Instance', readonly=True,
+    channel = fields.Many2One(
+        'sale.channel', 'Magento Instance', readonly=True,
         required=True, select=True
     )
     category = fields.Many2One(
@@ -186,8 +186,8 @@ class MagentoInstanceCategory(ModelSQL, ModelView):
         cls._sql_constraints += [
             (
                 'magento_id_instance_unique',
-                'UNIQUE(magento_id, instance)',
-                'Each category in an instance must be unique!'
+                'UNIQUE(magento_id, channel)',
+                'Each category in an channel must be unique!'
             )
         ]
 
@@ -247,9 +247,9 @@ class Template:
             # delegate to create_using_magento_data
             website = Website(Transaction().context.get('magento_website'))
 
-            instance = website.instance
+            channel = website.channel
             with magento.Product(
-                    instance.url, instance.api_user, instance.api_key
+                    channel.url, channel.api_user, channel.api_key
             ) as product_api:
                 product_data = product_api.info(magento_id)
 
@@ -335,8 +335,8 @@ class Template:
             'default_uom': website.default_uom.id,
             'salable': True,
             'sale_uom': website.default_uom.id,
-            'account_expense': website.instance.default_account_expense.id,
-            'account_revenue': website.instance.default_account_revenue.id,
+            'account_expense': website.channel.default_account_expense.id,
+            'account_revenue': website.channel.default_account_revenue.id,
         }
 
     @classmethod
@@ -395,10 +395,10 @@ class Template:
         MagentoProductTemplate = Pool().get('magento.website.template')
 
         website = Website(Transaction().context.get('magento_website'))
-        instance = website.instance
+        channel = website.channel
 
         with magento.Product(
-            instance.url, instance.api_user, instance.api_key
+            channel.url, channel.api_user, channel.api_key
         ) as product_api:
             magento_product_template, = MagentoProductTemplate.search([
                 ('template', '=', self.id),
@@ -479,10 +479,10 @@ class Template:
             )
 
         website = Website(Transaction().context['magento_website'])
-        instance = website.instance
+        channel = website.channel
 
         with magento.Product(
-            instance.url, instance.api_user, instance.api_key
+            channel.url, channel.api_user, channel.api_key
         ) as product_api:
             # We create only simple products on magento with the default
             # attribute set
@@ -542,7 +542,7 @@ class MagentoWebsiteTemplate(ModelSQL, ModelView):
             (
                 'magento_id_website_unique',
                 'UNIQUE(magento_id, website)',
-                'Each product in an instance must be unique!'
+                'Each product in an channel must be unique!'
             )
         ]
 
@@ -719,30 +719,30 @@ class ImportCatalog(Wizard):
         """
         Category = Pool().get('product.category')
 
-        instance = website.instance
-        Transaction().set_context({'magento_instance': instance.id})
+        channel = website.channel
+        Transaction().set_context({'magento_channel': channel.id})
 
         with magento.Category(
-            instance.url, instance.api_user, instance.api_key
+            channel.url, channel.api_user, channel.api_key
         ) as category_api:
             category_tree = category_api.tree(website.magento_root_category_id)
             Category.create_tree_using_magento_data(category_tree)
 
     def import_products(self, website):
         """
-        Imports products for the current instance
+        Imports products for the current channel
 
         :param website: Active record of website
         """
         Product = Pool().get('product.template')
 
-        instance = website.instance
+        channel = website.channel
         Transaction().set_context({
-            'magento_instance': instance.id,
+            'magento_channel': channel.id,
             'magento_website': website.id
         })
         with magento.Product(
-            instance.url, instance.api_user, instance.api_key
+            channel.url, channel.api_user, channel.api_key
         ) as product_api:
             magento_products = product_api.list()
 
@@ -773,10 +773,10 @@ class ExportCatalogStart(ModelView):
             return []
 
         website = Website(Transaction().context['active_id'])
-        instance = website.instance
+        channel = website.channel
 
         with magento.ProductAttributeSet(
-            instance.url, instance.api_user, instance.api_key
+            channel.url, channel.api_user, channel.api_key
         ) as attribute_set_api:
             attribute_sets = attribute_set_api.list()
 

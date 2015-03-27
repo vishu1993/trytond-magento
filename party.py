@@ -46,14 +46,14 @@ class Party:
         :param magento_id: Party ID sent by magento
         :return: Active record of record created/found
         """
-        Instance = Pool().get('magento.instance')
+        Channel = Pool().get('sale.channel')
 
         party = cls.find_using_magento_id(magento_id)
         if not party:
-            instance = Instance(Transaction().context.get('magento_instance'))
+            channel = Channel(Transaction().context.get('magento_channel'))
 
             with magento.Customer(
-                instance.url, instance.api_user, instance.api_key
+                channel.url, channel.api_user, channel.api_key
             ) as customer_api:
                 customer_data = customer_api.info(magento_id)
 

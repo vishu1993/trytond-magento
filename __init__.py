@@ -9,13 +9,14 @@
 """
 from trytond.pool import Pool
 from magento_ import (
-    Instance, InstanceWebsite, WebsiteStore, WebsiteStoreView,
+    InstanceWebsite, WebsiteStore, WebsiteStoreView,
     TestConnectionStart, TestConnection, ImportWebsitesStart, ImportWebsites,
     ExportInventoryStart, ExportInventory, StorePriceTier,
     ExportTierPricesStart, ExportTierPrices, ExportTierPricesStatus,
     ExportShipmentStatusStart, ExportShipmentStatus, ImportOrderStatesStart,
     ImportOrderStates, ImportCarriersStart, ImportCarriers, MagentoException
 )
+from channel import Channel
 from party import Party, MagentoWebsiteParty, Address
 from product import (
     Category, MagentoInstanceCategory, Template, MagentoWebsiteTemplate,
@@ -38,7 +39,7 @@ def register():
     Register classes
     """
     Pool.register(
-        Instance,
+        Channel,
         InstanceWebsite,
         WebsiteStore,
         StorePriceTier,

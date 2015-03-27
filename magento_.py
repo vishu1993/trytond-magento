@@ -22,7 +22,7 @@ from .sale import SaleLine
 
 
 __all__ = [
-    'Instance', 'InstanceWebsite', 'WebsiteStore', 'WebsiteStoreView',
+    'InstanceWebsite', 'WebsiteStore', 'WebsiteStoreView',
     'TestConnectionStart', 'TestConnection', 'ImportWebsitesStart',
     'ImportWebsites', 'ExportInventoryStart', 'ExportInventory',
     'StorePriceTier', 'ExportTierPricesStart', 'ExportTierPrices',
@@ -33,236 +33,11 @@ __all__ = [
 __metaclass__ = PoolMeta
 
 
-class Instance(ModelSQL, ModelView):
-    """
-    Magento Instance
-
-    Refers to a magento installation identifiable via url, api_user and api_key
-    """
-    __name__ = 'magento.instance'
-
-    name = fields.Char("Name", required=True)
-    url = fields.Char("Magento Site URL", required=True)
-    api_user = fields.Char("API User", required=True)
-    api_key = fields.Char("API Key", required=True)
-    active = fields.Boolean("Active")
-    company = fields.Many2One("company.company", "Company", required=True)
-    websites = fields.One2Many(
-        "magento.instance.website", "instance", "Website", readonly=True
-    )
-    order_states = fields.One2Many(
-        "magento.order_state", "instance", "Order States"
-    )
-    carriers = fields.One2Many(
-        "magento.instance.carrier", "instance", "Carriers / Shipping Methods"
-    )
-    order_prefix = fields.Char(
-        'Sale Order Prefix',
-        help="This helps to distinguish between orders from different "
-            "instances"
-    )
-
-    default_account_expense = fields.Property(fields.Many2One(
-        'account.account', 'Account Expense', domain=[
-            ('kind', '=', 'expense'),
-            ('company', '=', Eval('company')),
-        ], depends=['company'], required=True
-    ))
-
-    #: Used to set revenue account while creating products.
-    default_account_revenue = fields.Property(fields.Many2One(
-        'account.account', 'Account Revenue', domain=[
-            ('kind', '=', 'revenue'),
-            ('company', '=', Eval('company')),
-        ], depends=['company'], required=True
-    ))
-
-    @staticmethod
-    def default_order_prefix():
-        """
-        Sets default value for order prefix
-        """
-        return 'mag_'
-
-    @classmethod
-    @ModelView.button_action('magento.wizard_import_order_states')
-    def import_order_states(cls, instances):
-        """
-        Import order states for instances
-
-        :param instances: List of active records of instances
-        """
-        OrderState = Pool().get('magento.order_state')
-
-        for instance in instances:
-
-            Transaction().context.update({
-                'magento_instance': instance.id
-            })
-
-            # Import order states
-            with OrderConfig(
-                instance.url, instance.api_user, instance.api_key
-            ) as order_config_api:
-                OrderState.create_all_using_magento_data(
-                    order_config_api.get_states()
-                )
-
-    @staticmethod
-    def default_active():
-        """
-        Sets default for active
-        """
-        return True
-
-    @staticmethod
-    def default_company():
-        """
-        Sets current company as default
-        """
-        return Transaction().context.get('company')
-
-    @classmethod
-    def __setup__(cls):
-        """
-        Setup the class before adding to pool
-        """
-        super(Instance, cls).__setup__()
-        cls._sql_constraints += [
-            (
-                'unique_url', 'UNIQUE(url)',
-                'URL of an instance must be unique'
-            )
-        ]
-        cls._error_messages.update({
-            "connection_error": "Incorrect API Settings! \n"
-                "Please check and correct the API settings on instance.",
-            "multiple_instances": 'Selected operation can be done only for one'
-                ' instance at a time',
-        })
-        cls._buttons.update({
-            'test_connection': {},
-            'import_websites': {},
-            'import_order_states': {},
-            'import_carriers': {},
-        })
-
-    @classmethod
-    @ModelView.button_action('magento.wizard_test_connection')
-    def test_connection(cls, instances):
-        """
-        Test magento connection and display appropriate message to user
-
-        :param instances: Active record list of magento instance
-        """
-        try:
-            instance, = instances
-        except ValueError:
-            cls.raise_user_error('multiple_instances')
-
-        try:
-            with magento.API(
-                instance.url, instance.api_user, instance.api_key
-            ):
-                return
-        except (
-            xmlrpclib.Fault, IOError, xmlrpclib.ProtocolError, socket.timeout
-        ):
-            cls.raise_user_error("connection_error")
-
-    @classmethod
-    @ModelView.button_action('magento.wizard_import_websites')
-    def import_websites(cls, instances):
-        """
-        Import the websites and their stores/view from magento
-
-        :param instances: Active record list of magento instance
-        """
-        Website = Pool().get('magento.instance.website')
-        Store = Pool().get('magento.website.store')
-        StoreView = Pool().get('magento.store.store_view')
-        MagentoOrderState = Pool().get('magento.order_state')
-
-        try:
-            instance, = instances
-        except ValueError:
-            cls.raise_user_error('multiple_instances')
-
-        with Transaction().set_context(magento_instance=instance.id):
-
-            # Import order states
-            with OrderConfig(
-                instance.url, instance.api_user, instance.api_key
-            ) as order_config_api:
-                MagentoOrderState.create_all_using_magento_data(
-                    order_config_api.get_states()
-                )
-
-            # Import websites
-            with Core(
-                instance.url, instance.api_user, instance.api_key
-            ) as core_api:
-                websites = []
-                stores = []
-
-                mag_websites = core_api.websites()
-
-                # Create websites
-                for mag_website in mag_websites:
-                    websites.append(Website.find_or_create(
-                        instance, mag_website
-                    ))
-
-                for website in websites:
-                    mag_stores = core_api.stores(
-                        {'website_id': {'=': website.magento_id}}
-                    )
-
-                    # Create stores
-                    for mag_store in mag_stores:
-                        stores.append(Store.find_or_create(website, mag_store))
-
-                for store in stores:
-                    mag_store_views = core_api.store_views(
-                        {'group_id': {'=': store.magento_id}}
-                    )
-
-                    # Create store views
-                    for mag_store_view in mag_store_views:
-                            store_view = StoreView.find_or_create(
-                                store, mag_store_view
-                            )
-                            # AR refactoring
-                            store_view.save()
-
-    @classmethod
-    @ModelView.button_action('magento.wizard_import_carriers')
-    def import_carriers(cls, instances):
-        """
-        Import carriers/shipping methods from magento for instances
-
-        :param instances: Active record list of magento instances
-        """
-        InstanceCarrier = Pool().get('magento.instance.carrier')
-
-        for instance in instances:
-
-            with Transaction().set_context({
-                'magento_instance': instance.id
-            }):
-                with OrderConfig(
-                    instance.url, instance.api_user, instance.api_key
-                ) as order_config_api:
-                    mag_carriers = order_config_api.get_shipping_methods()
-
-                InstanceCarrier.create_all_using_magento_data(mag_carriers)
-
-
 class InstanceWebsite(ModelSQL, ModelView):
     """
-    Magento Instance Website
+    Magento Channel Website
 
-    A magento instance can have multiple websites.
+    A magento channel can have multiple websites.
     They act as  parents of stores. A website consists of one or more stores
     """
     __name__ = 'magento.instance.website'
@@ -270,8 +45,8 @@ class InstanceWebsite(ModelSQL, ModelView):
     name = fields.Char('Name', required=True)
     code = fields.Char('Code', required=True, readonly=True)
     magento_id = fields.Integer('Magento ID', readonly=True, required=True)
-    instance = fields.Many2One(
-        'magento.instance', 'Instance', required=True, readonly=True,
+    channel = fields.Many2One(
+        'sale.channel', 'Channel', required=True, readonly=True,
     )
     company = fields.Function(
         fields.Many2One('company.company', 'Company'),
@@ -292,11 +67,11 @@ class InstanceWebsite(ModelSQL, ModelView):
 
     def get_company(self, name):
         """
-        Returns company related to instance
+        Returns company related to channel
 
         :param name: Field name
         """
-        return self.instance.company.id
+        return self.channel.company.id
 
     @staticmethod
     def default_magento_root_category_id():
@@ -323,25 +98,25 @@ class InstanceWebsite(ModelSQL, ModelView):
         super(InstanceWebsite, cls).__setup__()
         cls._sql_constraints += [
             (
-                'magento_id_instance_unique', 'UNIQUE(magento_id, instance)',
-                'A website must be unique in an instance'
+                'magento_id_channel_unique', 'UNIQUE(magento_id, channel)',
+                'A website must be unique in an channel'
             )
         ]
 
     @classmethod
-    def find_or_create(cls, instance, values):
+    def find_or_create(cls, channel, values):
         """
         Looks for the website whose `values` are sent by magento against
-        the instance with `instance` in tryton.
+        the channel with `channel` in tryton.
         If a record exists for this, return that else create a new one and
         return
 
-        :param instance: Active record of instance
+        :param channel: Active record of channel
         :param values: Dictionary of values for a website sent by magento
         :return: Active record of record created/found
         """
         websites = cls.search([
-            ('instance', '=', instance.id),
+            ('channel', '=', channel.id),
             ('magento_id', '=', int(values['website_id']))
         ])
 
@@ -351,7 +126,7 @@ class InstanceWebsite(ModelSQL, ModelView):
         return cls.create([{
             'name': values['name'],
             'code': values['code'],
-            'instance': instance.id,
+            'channel': channel.id,
             'magento_id': int(values['website_id']),
         }])[0]
 
@@ -374,7 +149,7 @@ class InstanceWebsite(ModelSQL, ModelView):
         Location = Pool().get('stock.location')
 
         product_templates = []
-        instance = self.instance
+        channel = self.channel
 
         locations = Location.search([('type', '=', 'storage')])
 
@@ -391,7 +166,7 @@ class InstanceWebsite(ModelSQL, ModelView):
 
                 # Update stock information to magento
                 with magento.Inventory(
-                    instance.url, instance.api_user, instance.api_key
+                    channel.url, channel.api_user, channel.api_key
                 ) as inventory_api:
                     inventory_api.update(
                         magento_product_template.magento_id, product_data
@@ -416,9 +191,9 @@ class WebsiteStore(ModelSQL, ModelView):
         'magento.instance.website', 'Website', required=True,
         readonly=True,
     )
-    instance = fields.Function(
-        fields.Many2One('magento.instance', 'Instance'),
-        'get_instance'
+    channel = fields.Function(
+        fields.Many2One('sale.channel', 'Sale Channel'),
+        'get_channel'
     )
     company = fields.Function(
         fields.Many2One('company.company', 'Company'),
@@ -443,13 +218,13 @@ class WebsiteStore(ModelSQL, ModelView):
         """
         return self.website.company.id
 
-    def get_instance(self, name):
+    def get_channel(self, name):
         """
-        Returns instance related to website
+        Returns channel related to website
 
         :param name: Field name
         """
-        return self.website.instance.id
+        return self.website.channel.id
 
     @classmethod
     def __setup__(cls):
@@ -496,7 +271,7 @@ class WebsiteStore(ModelSQL, ModelView):
 
         :return: List of products
         """
-        instance = self.website.instance
+        channel = self.website.channel
 
         for mag_product_template in self.website.magento_product_templates:
             product_template = mag_product_template.template
@@ -528,7 +303,7 @@ class WebsiteStore(ModelSQL, ModelView):
 
             # Update stock information to magento
             with magento.ProductTierPrice(
-                instance.url, instance.api_user, instance.api_key
+                channel.url, channel.api_user, channel.api_key
             ) as tier_price_api:
                 tier_price_api.update(
                     mag_product_template.magento_id, price_data
@@ -553,9 +328,9 @@ class WebsiteStoreView(ModelSQL, ModelView):
     store = fields.Many2One(
         'magento.website.store', 'Store', required=True, readonly=True,
     )
-    instance = fields.Function(
-        fields.Many2One('magento.instance', 'Instance'),
-        'get_instance'
+    channel = fields.Function(
+        fields.Many2One('sale.channel', 'Channel'),
+        'get_channel'
     )
     website = fields.Function(
         fields.Many2One('magento.instance.website', 'Website'),
@@ -591,13 +366,13 @@ class WebsiteStoreView(ModelSQL, ModelView):
                 return list(store_view_tax.taxes)
         return []
 
-    def get_instance(self, name):
+    def get_channel(self, name):
         """
-        Returns instance related to store
+        Returns channel related to store
 
         :param name: Field name
         """
-        return self.store.instance.id
+        return self.store.channel.id
 
     def get_website(self, name):
         """
@@ -629,7 +404,7 @@ class WebsiteStoreView(ModelSQL, ModelView):
         ]
         cls._error_messages.update({
             "states_not_found": 'No order states found for importing orders! '
-                'Please configure the order states on magento instance',
+                'Please configure the order states on magento channel',
         })
         cls._buttons.update({
             'import_orders_button': {},
@@ -693,15 +468,15 @@ class WebsiteStoreView(ModelSQL, ModelView):
         MagentoOrderState = Pool().get('magento.order_state')
 
         new_sales = []
-        instance = self.instance
+        channel = self.channel
         with Transaction().set_context({
-            'magento_instance': instance.id,
+            'magento_channel': channel.id,
             'magento_website': self.website.id,
             'magento_store_view': self.id,
         }):
 
             order_states = MagentoOrderState.search([
-                ('instance', '=', instance.id),
+                ('channel', '=', channel.id),
                 ('use_for_import', '=', True)
             ])
             order_states_to_import_in = map(
@@ -712,7 +487,7 @@ class WebsiteStoreView(ModelSQL, ModelView):
                 self.raise_user_error("states_not_found")
 
             with magento.Order(
-                instance.url, instance.api_user, instance.api_key
+                channel.url, channel.api_user, channel.api_key
             ) as order_api:
                 # Filter orders with date and store_id using list()
                 # then get info of each order using info()
@@ -805,9 +580,9 @@ class WebsiteStoreView(ModelSQL, ModelView):
             store_views = cls.search([])
 
         for store_view in store_views:
-            # Set the instance in context
+            # Set the channel in context
             with Transaction().set_context(
-                magento_instance=store_view.instance.id
+                magento_channel=store_view.channel.id
             ):
                 store_view.export_shipment_status_to_magento()
 
@@ -820,7 +595,7 @@ class WebsiteStoreView(ModelSQL, ModelView):
         Shipment = Pool().get('stock.shipment.out')
         Sale = Pool().get('sale.sale')
 
-        instance = self.instance
+        channel = self.channel
 
         sale_domain = [
             ('magento_store_view', '=', self.id),
@@ -842,7 +617,7 @@ class WebsiteStoreView(ModelSQL, ModelView):
         for sale in sales:
             # Get the increment id from the sale reference
             increment_id = sale.reference[
-                len(instance.order_prefix): len(sale.reference)
+                len(channel.order_prefix): len(sale.reference)
             ]
 
             for shipment in sale.shipments:
@@ -855,7 +630,7 @@ class WebsiteStoreView(ModelSQL, ModelView):
                         sales.pop(sale)
                         continue
                     with magento.Shipment(
-                        instance.url, instance.api_user, instance.api_key
+                        channel.url, channel.api_user, channel.api_key
                     ) as shipment_api:
                         item_qty_map = {}
                         for move in shipment.outgoing_moves:
@@ -937,7 +712,7 @@ class TestConnection(Wizard):
     """
     Test Connection Wizard
 
-    Test the connection to magento instance(s)
+    Test the connection to magento channel(s)
     """
     __name__ = 'magento.wizard_test_connection'
 
@@ -989,7 +764,7 @@ class ImportWebsites(Wizard):
         """
         return {
             'message': "This wizard has imported all the websites for this " +
-                "magento instance. It has also imported all the stores and " +
+                "magento channel. It has also imported all the stores and " +
                 "store views related to the websites imported. If any of " +
                 "the records existed already, it wont be imported."
         }
@@ -1002,7 +777,7 @@ class ImportOrderStatesStart(ModelView):
 
 class ImportOrderStates(Wizard):
     """
-    Wizard to import order states for instance
+    Wizard to import order states for channel
     """
     __name__ = 'magento.wizard_import_order_states'
 
@@ -1032,7 +807,7 @@ class ImportCarriersStart(ModelView):
 
 class ImportCarriers(Wizard):
     """
-    Wizard to import carriers / shipping methods for instance
+    Wizard to import carriers / shipping methods for channel
     """
     __name__ = 'magento.wizard_import_carriers'
 
@@ -1052,7 +827,7 @@ class ImportCarriers(Wizard):
         """
         return {
             'message': "This wizard has imported all the carriers / " +
-                "shipping methods for this magento instance. You should now " +
+                "shipping methods for this magento channel. You should now " +
                 "configure the imported carriers / shipping methods to " +
                 "match the shipment carriers in Tryton to allow seamless " +
                 "synchronisation of tracking information."

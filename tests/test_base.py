@@ -6,6 +6,7 @@
     :license: BSD, see LICENSE for more details.
 """
 import os
+from decimal import Decimal
 import json
 import unittest
 from datetime import datetime
@@ -63,7 +64,7 @@ class TestBase(unittest.TestCase):
         """
         Setup default data
         """
-        self.Instance = POOL.get('magento.instance')
+        self.Channel = POOL.get('sale.channel')
         self.Website = POOL.get('magento.instance.website')
         self.Store = POOL.get('magento.website.store')
         self.StoreView = POOL.get('magento.store.store_view')
@@ -79,12 +80,14 @@ class TestBase(unittest.TestCase):
             'account.create_chart', type="wizard"
         )
         self.User = POOL.get('res.user')
+        self.Location = POOL.get('stock.location')
         self.PaymentTerm = POOL.get('account.invoice.payment_term')
         self.FiscalYear = POOL.get('account.fiscalyear')
         self.Sequence = POOL.get('ir.sequence')
         self.SequenceStrict = POOL.get('ir.sequence.strict')
         self.AccountConfiguration = POOL.get('account.configuration')
         self.Property = POOL.get('ir.property')
+        self.PriceList = POOL.get('product.price_list')
         self.ModelField = POOL.get('ir.model.field')
 
         self.country1, = self.Country.create([{
@@ -226,30 +229,62 @@ class TestBase(unittest.TestCase):
         )
 
         # Create payment term
-        self.PaymentTerm.create([{
+        payment_term, = self.PaymentTerm.create([{
             'name': 'Direct',
             'lines': [('create', [{'type': 'remainder'}])]
         }])
+        price_list, = self.PriceList.create([{
+            'name': 'PL 1',
+            'company': self.company.id,
+            'lines': [
+                ('create', [{
+                    'formula': 'unit_price * %s' % Decimal('1.10')
+                }])
+            ],
+        }])
+        warehouse, = self.Location.search([
+            ('type', '=', 'warehouse')
+        ], limit=1)
 
-        # Create two instances
+        # Create two channels
         with Transaction().set_context({'company': self.company.id}):
-            self.instance1, = self.Instance.create([{
-                'name': 'Test Instance 1',
-                'url': 'some test url 1',
-                'api_user': 'admin',
-                'api_key': 'testkey',
-                'company': self.company,
-                'default_account_expense': self.get_account_by_kind('expense'),
-                'default_account_revenue': self.get_account_by_kind('revenue'),
+            self.channel1, = self.Channel.create([{
+                'name': 'Test Channel 1',
+                'price_list': price_list,
+                'invoice_method': 'order',
+                'shipment_method': 'order',
+                'source': 'manual',
+                'create_users': [('add', [USER])],
+                'warehouse': warehouse,
+                'payment_term': payment_term,
+                'company': self.company.id,
+
+                'magento_url': 'some test url 1',
+                'magento_api_user': 'admin',
+                'magento_api_key': 'testkey',
+                'magento_default_account_expense':
+                    self.get_account_by_kind('expense'),
+                'magento_default_account_revenue':
+                    self.get_account_by_kind('revenue'),
             }])
-            self.instance2, = self.Instance.create([{
-                'name': 'Test Instance 2',
-                'url': 'some test url 2',
-                'api_user': 'admin',
-                'api_key': 'testkey',
-                'company': self.company,
-                'default_account_expense': self.get_account_by_kind('expense'),
-                'default_account_revenue': self.get_account_by_kind('revenue'),
+            self.channel2, = self.Channel.create([{
+                'name': 'Test channel 2',
+                'price_list': price_list,
+                'invoice_method': 'order',
+                'shipment_method': 'order',
+                'source': 'manual',
+                'create_users': [('add', [USER])],
+                'warehouse': warehouse,
+                'payment_term': payment_term,
+                'company': self.company.id,
+
+                'magento_url': 'some test url 2',
+                'magento_api_user': 'admin',
+                'magento_api_key': 'testkey',
+                'magento_default_account_expense':
+                    self.get_account_by_kind('expense'),
+                'magento_default_account_revenue':
+                    self.get_account_by_kind('revenue'),
             }])
 
         # Search product uom
@@ -257,18 +292,18 @@ class TestBase(unittest.TestCase):
             ('name', '=', 'Unit'),
         ])
 
-        # Create one website under each instance
+        # Create one website under each channel
         self.website1, = self.Website.create([{
             'name': 'A test website 1',
             'magento_id': 1,
             'code': 'test_code',
-            'instance': self.instance1,
+            'channel': self.channel1,
         }])
         self.website2, = self.Website.create([{
             'name': 'A test website 2',
             'magento_id': 1,
             'code': 'test_code',
-            'instance': self.instance2,
+            'channel': self.channel2,
         }])
 
         self.store, = self.Store.create([{
@@ -292,7 +327,7 @@ class TestBase(unittest.TestCase):
         # TODO: This should work without creating new properties
         self.Property.create([{
             'value': 'account.account' + ',' +
-                str(self.website1.instance.default_account_revenue.id),
+                str(self.website1.channel.magento_default_account_revenue.id),
             'res': None,
             'field': model_field.id,
         }])
