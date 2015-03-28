@@ -30,9 +30,6 @@ class Channel:
     magento_url = fields.Char("Magento Site URL", required=True)
     magento_api_user = fields.Char("API User", required=True)
     magento_api_key = fields.Char("API Key", required=True)
-    magento_websites = fields.One2Many(
-        "magento.instance.website", "instance", "Website", readonly=True
-    )
     magento_order_states = fields.One2Many(
         "magento.order_state", "instance", "Order States"
     )
@@ -60,7 +57,7 @@ class Channel:
     magento_website_id = fields.Integer(
         'Website ID', readonly=True, required=True
     )
-    magento_website_name = fields.Integer(
+    magento_website_name = fields.Char(
         'Website Name', readonly=True, required=True
     )
     magento_website_code = fields.Char(
@@ -195,71 +192,6 @@ class Channel:
             xmlrpclib.Fault, IOError, xmlrpclib.ProtocolError, socket.timeout
         ):
             cls.raise_user_error("connection_error")
-
-    @classmethod
-    @ModelView.button_action('magento.wizard_import_websites')
-    def import_websites(cls, instances):
-        """
-        Import the websites and their stores/view from magento
-
-        :param instances: Active record list of magento instance
-        """
-        Website = Pool().get('magento.instance.website')
-        Store = Pool().get('magento.website.store')
-        StoreView = Pool().get('magento.store.store_view')
-        MagentoOrderState = Pool().get('magento.order_state')
-
-        try:
-            instance, = instances
-        except ValueError:
-            cls.raise_user_error('multiple_instances')
-
-        with Transaction().set_context(magento_instance=instance.id):
-
-            # Import order states
-            with OrderConfig(
-                instance.url, instance.api_user, instance.api_key
-            ) as order_config_api:
-                MagentoOrderState.create_all_using_magento_data(
-                    order_config_api.get_states()
-                )
-
-            # Import websites
-            with Core(
-                instance.url, instance.api_user, instance.api_key
-            ) as core_api:
-                websites = []
-                stores = []
-
-                mag_websites = core_api.websites()
-
-                # Create websites
-                for mag_website in mag_websites:
-                    websites.append(Website.find_or_create(
-                        instance, mag_website
-                    ))
-
-                for website in websites:
-                    mag_stores = core_api.stores(
-                        {'website_id': {'=': website.magento_id}}
-                    )
-
-                    # Create stores
-                    for mag_store in mag_stores:
-                        stores.append(Store.find_or_create(website, mag_store))
-
-                for store in stores:
-                    mag_store_views = core_api.store_views(
-                        {'group_id': {'=': store.magento_id}}
-                    )
-
-                    # Create store views
-                    for mag_store_view in mag_store_views:
-                            store_view = StoreView.find_or_create(
-                                store, mag_store_view
-                            )
-                            # AR refactoring
-                            store_view.save()
 
     @classmethod
     @ModelView.button_action('magento.wizard_import_carriers')

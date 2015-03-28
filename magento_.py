@@ -32,159 +32,6 @@ __all__ = [
 __metaclass__ = PoolMeta
 
 
-class WebsiteStoreView(ModelSQL, ModelView):
-    """
-    Magento Website Store View
-
-    A store needs one or more store views to be browse-able in the front-end.
-    It allows for multiple presentations of a store. Most implementations
-    use store views for different languages
-    """
-    __name__ = 'magento.store.store_view'
-
-    name = fields.Char('Name', required=True)
-    code = fields.Char('Code', required=True, readonly=True)
-    magento_id = fields.Integer('Magento ID', readonly=True, required=True)
-    store = fields.Many2One(
-        'magento.website.store', 'Store', required=True, readonly=True,
-    )
-    channel = fields.Function(
-        fields.Many2One('sale.channel', 'Channel'),
-        'get_channel'
-    )
-    website = fields.Function(
-        fields.Many2One('magento.instance.website', 'Website'),
-        'get_website'
-    )
-    company = fields.Function(
-        fields.Many2One('company.company', 'Company'),
-        'get_company'
-    )
-    last_order_import_time = fields.DateTime('Last Order Import Time')
-    last_order_export_time = fields.DateTime("Last Order Export Time")
-
-    #: Last time at which the shipment status was exported to magento
-    last_shipment_export_time = fields.DateTime('Last shipment export time')
-
-    #: Checking this will make sure that only the done shipments which have a
-    #: carrier and tracking reference are exported.
-    export_tracking_information = fields.Boolean(
-        'Export tracking information', help='Checking this will make sure'
-        ' that only the done shipments which have a carrier and tracking '
-        'reference are exported. This will update carrier and tracking '
-        'reference on magento for the exported shipments as well.'
-    )
-
-    taxes = fields.One2Many(
-        "magento.store.store_view.tax", "store_view", "Taxes"
-    )
-
-    def get_taxes(self, rate):
-        "Return list of tax records with the given rate"
-        for store_view_tax in self.taxes:
-            if store_view_tax.tax_percent == rate:
-                return list(store_view_tax.taxes)
-        return []
-
-    def get_channel(self, name):
-        """
-        Returns channel related to store
-
-        :param name: Field name
-        """
-        return self.store.channel.id
-
-    def get_website(self, name):
-        """
-        Returns website related to store
-
-        :param name: Field name
-        """
-        return self.store.website.id
-
-    def get_company(self, name):
-        """
-        Returns company related to store
-
-        :param name: Field name
-        """
-        return self.store.company.id
-
-    @classmethod
-    def __setup__(cls):
-        """
-        Setup the class before adding to pool
-        """
-        super(WebsiteStoreView, cls).__setup__()
-        cls._sql_constraints += [
-            (
-                'magento_id_store_unique', 'UNIQUE(magento_id, store)',
-                'A store view must be unique in a store'
-            )
-        ]
-        cls._error_messages.update({
-            "states_not_found": 'No order states found for importing orders! '
-                'Please configure the order states on magento channel',
-        })
-        cls._buttons.update({
-            'import_orders_button': {},
-            'export_order_status_button': {}
-        })
-
-    @classmethod
-    def find_or_create(cls, store, values):
-        """
-        Looks for the store view whose `values` are sent by magento against
-        the store with `store` in tryton.
-        If a record exists for this, return that else create a new one and
-        return
-
-        :param store: Active record of store
-        :param values: Dictionary of values for store view sent by magento
-        :return: Actice record of record created/found
-        """
-        store_views = cls.search([
-            ('store', '=', store.id),
-            ('magento_id', '=', int(values['store_id']))
-        ])
-
-        if store_views:
-            return store_views[0]
-
-        return cls(**{
-            'name': values['name'],
-            'code': values['code'],
-            'store': store.id,
-            'magento_id': int(values['store_id']),
-        })
-
-    @classmethod
-    @ModelView.button_action('magento.wizard_import_orders')
-    def import_orders_button(cls, store_views):
-        """
-        Calls wizard to import orders for store view
-
-        :param store_views: List of active records of store views
-        """
-        pass
-
-    @classmethod
-    @ModelView.button_action('magento.wizard_export_order_status')
-    def export_order_status_button(cls, store_views):
-        """
-        Calls wizard to export order status for store view
-
-        :param store_views: List of active records of store views
-        """
-        pass
-
-    @classmethod
-    def get_current_store_view(cls):
-        """Helper method to get the current store view.
-        """
-        return cls(Transaction().context.get('magento_store_view'))
-
-
 class MagentoTier(ModelSQL, ModelView):
     """Price Tiers for store
 
@@ -372,11 +219,11 @@ class ExportInventory(Wizard):
     def do_export_(self, action):
         """Handles the transition"""
 
-        Website = Pool().get('magento.instance.website')
+        Channel = Pool().get('sale.channel')
 
-        website = Website(Transaction().context.get('active_id'))
+        channel = Channel(Transaction().context.get('magento_channel'))
 
-        product_templates = website.export_inventory_to_magento()
+        product_templates = channel.export_inventory_to_magento()
 
         action['pyson_domain'] = PYSONEncoder().encode(
             [('id', 'in', map(int, product_templates))])
@@ -476,11 +323,11 @@ class ExportShipmentStatus(Wizard):
     def do_export_(self, action):
         """Handles the transition"""
 
-        StoreView = Pool().get('magento.store.store_view')
+        Channel = Pool().get('sale.channel')
 
-        storeview = StoreView(Transaction().context.get('active_id'))
+        channel = Channel(Transaction().context.get('active_id'))
 
-        sales = storeview.export_shipment_status_to_magento()
+        sales = channel.export_shipment_status_to_magento()
 
         action['pyson_domain'] = PYSONEncoder().encode(
             [('id', 'in', map(int, sales))]

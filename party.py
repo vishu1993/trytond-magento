@@ -158,8 +158,8 @@ class MagentoWebsiteParty(ModelSQL, ModelView):
     __name__ = 'magento.website.party'
 
     magento_id = fields.Integer('Magento ID', readonly=True)
-    website = fields.Many2One(
-        'magento.instance.website', 'Website', required=True, readonly=True
+    channel = fields.Many2One(
+        'sale.channel', 'Channel', required=True, readonly=True
     )
     party = fields.Many2One(
         'party.party', 'Party', required=True, readonly=True

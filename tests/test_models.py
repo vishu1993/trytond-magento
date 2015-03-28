@@ -57,70 +57,16 @@ class TestModels(TestBase):
                         self.get_account_by_kind('expense'),
                     'magento_default_account_revenue':
                         self.get_account_by_kind('revenue'),
+                    'magento_website_name': 'A test website 1',
+                    'magento_website_id': 1,
+                    'magento_website_code': 'test_code',
+                    'magento_store_name': 'Store1',
+                    'magento_store_id': 1,
                 }
 
                 channel, = self.Channel.create([values])
 
                 self.assert_(channel)
-
-    def test0020create_website(self):
-        '''
-        Tests if website is created under instance
-        '''
-        with Transaction().start(DB_NAME, USER, CONTEXT):
-            self.setup_defaults()
-
-            values = {
-                'name': 'A test website',
-                'magento_id': 3,
-                'code': 'test_code',
-                'channel': self.channel1.id,
-            }
-
-            website, = self.Website.create([values])
-            self.assert_(website)
-
-            self.assertEqual(website.company, self.channel1.company)
-
-    def test0030create_store(self):
-        '''
-        Tests if store is created under website
-        '''
-        with Transaction().start(DB_NAME, USER, CONTEXT):
-            self.setup_defaults()
-
-            values = {
-                'name': 'A test store',
-                'magento_id': 2,
-                'website': self.website1.id,
-            }
-
-            store, = self.Store.create([values])
-            self.assert_(store)
-
-            self.assertEqual(store.company, self.website1.company)
-            self.assertEqual(store.channel, self.website1.channel)
-
-    def test0040create_store_view(self):
-        '''
-        Tests if store view is created for store
-        '''
-        with Transaction().start(DB_NAME, USER, CONTEXT):
-            self.setup_defaults()
-
-            values = {
-                'name': 'A test store view',
-                'code': 'test_code',
-                'magento_id': 2,
-                'store': self.store.id,
-            }
-
-            store_view, = self.StoreView.create([values])
-            self.assert_(store_view)
-
-            self.assertEqual(store_view.channel, self.store.channel)
-            self.assertEqual(store_view.company, self.store.company)
-            self.assertEqual(store_view.website, self.store.website)
 
 
 def suite():

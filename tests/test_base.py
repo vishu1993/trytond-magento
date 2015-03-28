@@ -65,8 +65,6 @@ class TestBase(unittest.TestCase):
         Setup default data
         """
         self.Channel = POOL.get('sale.channel')
-        self.Store = POOL.get('magento.website.store')
-        self.StoreView = POOL.get('magento.store.store_view')
         self.Uom = POOL.get('product.uom')
         self.Currency = POOL.get('currency.currency')
         self.Company = POOL.get('company.company')
@@ -264,6 +262,11 @@ class TestBase(unittest.TestCase):
                     self.get_account_by_kind('expense'),
                 'magento_default_account_revenue':
                     self.get_account_by_kind('revenue'),
+                'magento_website_name': 'A test website 1',
+                'magento_website_id': 1,
+                'magento_website_code': 'test_code',
+                'magento_store_name': 'Store1',
+                'magento_store_id': 1,
             }])
             self.channel2, = self.Channel.create([{
                 'name': 'Test channel 2',
@@ -286,6 +289,8 @@ class TestBase(unittest.TestCase):
                 'magento_website_name': 'A test website 1',
                 'magento_website_id': 1,
                 'magento_website_code': 'test_code',
+                'magento_store_name': 'Store1',
+                'magento_store_id': 1,
             }])
 
         self.User.set_preferences({'current_channel': self.channel2})
@@ -295,30 +300,6 @@ class TestBase(unittest.TestCase):
             ('name', '=', 'Unit'),
         ])
 
-        # Create one website under each channel
-        self.website1, = self.Website.create([{
-            'channel': self.channel1,
-        }])
-        self.website2, = self.Website.create([{
-            'name': 'A test website 2',
-            'magento_id': 1,
-            'code': 'test_code',
-            'channel': self.channel2,
-        }])
-
-        self.store, = self.Store.create([{
-            'name': 'Store1',
-            'magento_id': 1,
-            'website': self.website1,
-        }])
-
-        self.store_view, = self.StoreView.create([{
-            'name': 'Store view1',
-            'magento_id': 1,
-            'store': self.store,
-            'code': '123',
-        }])
-
         model_field, = self.ModelField.search([
             ('name', '=', 'account_revenue'),
             ('model.model', '=', 'product.template'),
@@ -327,7 +308,7 @@ class TestBase(unittest.TestCase):
         # TODO: This should work without creating new properties
         self.Property.create([{
             'value': 'account.account' + ',' +
-                str(self.website1.channel.magento_default_account_revenue.id),
+                str(self.channel1.magento_default_account_revenue.id),
             'res': None,
             'field': model_field.id,
         }])
