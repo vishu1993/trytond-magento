@@ -286,6 +286,8 @@ class TestBase(unittest.TestCase):
                     self.get_account_by_kind('revenue'),
             }])
 
+        self.User.set_preferences({'current_channel': self.channel2})
+
         # Search product uom
         self.uom, = self.Uom.search([
             ('name', '=', 'Unit'),

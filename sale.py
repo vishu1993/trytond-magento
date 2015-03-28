@@ -66,7 +66,7 @@ class MagentoOrderState(ModelSQL, ModelView):
         ('invoice', 'On Invoice Paid'),
     ], 'Shipment Method')
     channel = fields.Many2One(
-        'sale.channel', 'Magento Instance', required=True,
+        'sale.channel', 'Sale Channel', required=True,
         ondelete="CASCADE"
     )
 
@@ -85,8 +85,8 @@ class MagentoOrderState(ModelSQL, ModelView):
         super(MagentoOrderState, cls).__setup__()
         cls._sql_constraints += [
             (
-                'code_instance_unique', 'unique(code, instance)',
-                'Each magento state must be unique by code in an instance'
+                'code_channel_unique', 'unique(code, channel)',
+                'Each magento state must be unique by code in an channel'
             ),
         ]
 
@@ -157,6 +157,7 @@ class MagentoOrderState(ModelSQL, ModelView):
                 'channel': Transaction().context.get('magento_channel'),
             })
             order_states_to_create.append(data_map)
+        print order_states_to_create
 
         return cls.create(order_states_to_create)
 
@@ -166,9 +167,6 @@ class Sale:
     __name__ = 'sale.sale'
 
     magento_id = fields.Integer('Magento ID', readonly=True)
-    magento_channel = fields.Many2One(
-        'sale.channel', 'Magento Instance', readonly=True,
-    )
     magento_store_view = fields.Many2One(
         'magento.store.store_view', 'Store View', readonly=True,
     )
@@ -191,7 +189,7 @@ class Sale:
         cls._sql_constraints += [
             (
                 'magento_id_channel_unique',
-                'UNIQUE(magento_id, magento_channel)',
+                'UNIQUE(magento_id, channel)',
                 'A sale must be unique in an channel',
             )
         ]
@@ -213,7 +211,7 @@ class Sale:
         Checks if channel of store view is same as channel of sale order
         """
         if self.magento_id and \
-                self.magento_store_view.channel != self.magento_channel:
+                self.magento_store_view.channel != self.channel:
             self.raise_user_error("invalid_channel")
 
     def get_magento_exceptions(self, name):
@@ -260,7 +258,7 @@ class Sale:
         # Each sale has to be unique in an channel of magento
         sales = cls.search([
             ('magento_id', '=', int(order_data['order_id'])),
-            ('magento_channel', '=',
+            ('channel', '=',
                 Transaction().context.get('magento_channel')),
         ])
 
@@ -325,7 +323,8 @@ class Sale:
             shipment_method = tryton_state['shipment_method']
 
         return Sale(**{
-            'reference': channel.order_prefix + order_data['increment_id'],
+            'reference': channel.magento_order_prefix +
+                order_data['increment_id'],
             'sale_date': order_data['created_at'].split()[0],
             'party': party.id,
             'currency': currency.id,
@@ -480,7 +479,8 @@ class Sale:
             channel = Channel(Transaction().context.get('magento_channel'))
 
             with magento.Order(
-                channel.url, channel.api_user, channel.api_key
+                channel.magento_url, channel.magento_api_user,
+                channel.magento_api_key
             ) as order_api:
                 order_data = order_api.info(order_increment_id)
 
@@ -501,7 +501,7 @@ class Sale:
         # each sale has to be unique in an channel of magento
         sales = cls.search([
             ('magento_id', '=', order_id),
-            ('magento_channel', '=',
+            ('channel', '=',
                 Transaction().context.get('magento_channel'))
         ])
         return sales and sales[0] or None
@@ -521,9 +521,11 @@ class Sale:
         channel = Channel(Transaction().context.get('magento_channel'))
 
         sales = cls.search([
-            ('reference', '=', channel.order_prefix + order_increment_id),
-            ('magento_channel', '=',
-                Transaction().context.get('magento_channel'))
+            (
+                'reference', '=', channel.magento_order_prefix +
+                order_increment_id
+            ),
+            ('channel', '=', Transaction().context.get('magento_channel'))
         ])
 
         return sales and sales[0] or None
@@ -623,14 +625,15 @@ class Sale:
         if not self.magento_id:
             return self
 
-        channel = self.magento_channel
-        increment_id = self.reference.split(channel.order_prefix)[1]
+        channel = self.channel
+        increment_id = self.reference.split(channel.magento_order_prefix)[1]
         # This try except is placed because magento might not accept this
         # order status change due to its workflow constraints.
         # TODO: Find a better way to do it
         try:
             with magento.Order(
-                channel.url, channel.api_user, channel.api_key
+                channel.magento_url, channel.magento_api_user,
+                channel.magento_api_key
             ) as order_api:
                 if self.state == 'cancel':
                     order_api.cancel(increment_id)
@@ -800,7 +803,7 @@ class StockShipmentOut:
         Channel = Pool().get('sale.channel')
         Shipment = Pool().get('stock.shipment.out')
 
-        channel = Channel(Transaction().context['current_channel'])
+        channel = Channel(Transaction().context['magento_channel'])
 
         carriers = MagentoCarrier.search([
             ('channel', '=', channel.id),
@@ -814,7 +817,8 @@ class StockShipmentOut:
 
         # Add tracking info to the shipment on magento
         with magento.Shipment(
-            channel.url, channel.api_user, channel.api_key
+            channel.magento_url, channel.magento_api_user,
+            channel.magento_api_key
         ) as shipment_api:
             shipment_increment_id = shipment_api.addtrack(
                 self.magento_increment_id,

@@ -67,7 +67,7 @@ class Channel:
         return res
 
     @staticmethod
-    def default_order_prefix():
+    def default_magento_order_prefix():
         """
         Sets default value for magento order prefix
         """

@@ -31,9 +31,9 @@ def suite():
         #unittest.TestLoader().loadTestsFromTestCase(TestCountry),
         #unittest.TestLoader().loadTestsFromTestCase(TestParty),
         #unittest.TestLoader().loadTestsFromTestCase(TestWebsiteImport),
-        unittest.TestLoader().loadTestsFromTestCase(TestProduct),
-        #unittest.TestLoader().loadTestsFromTestCase(TestSale),
-        #unittest.TestLoader().loadTestsFromTestCase(TestCurrency),
+        #unittest.TestLoader().loadTestsFromTestCase(TestProduct),
+        unittest.TestLoader().loadTestsFromTestCase(TestSale),
+        unittest.TestLoader().loadTestsFromTestCase(TestCurrency),
     ])
     return test_suite
 

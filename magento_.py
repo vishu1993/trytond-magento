@@ -620,7 +620,7 @@ class WebsiteStoreView(ModelSQL, ModelView):
         for sale in sales:
             # Get the increment id from the sale reference
             increment_id = sale.reference[
-                len(channel.order_prefix): len(sale.reference)
+                len(channel.magento_order_prefix): len(sale.reference)
             ]
 
             for shipment in sale.shipments:

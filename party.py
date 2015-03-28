@@ -53,7 +53,8 @@ class Party:
             channel = Channel(Transaction().context.get('magento_channel'))
 
             with magento.Customer(
-                channel.url, channel.api_user, channel.api_key
+                channel.magento_url, channel.magento_api_user,
+                channel.magento_api_key
             ) as customer_api:
                 customer_data = customer_api.info(magento_id)
 

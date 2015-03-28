@@ -96,7 +96,7 @@ class TestSale(TestBase):
 
     def test_0005_import_sale_order_states(self):
         """
-        Test the import and creation of sale order states for an instance
+        Test the import and creation of sale order states for an channel
         """
         MagentoOrderState = POOL.get('magento.order_state')
 
@@ -105,7 +105,7 @@ class TestSale(TestBase):
 
             states_before_import = MagentoOrderState.search([])
             with Transaction().set_context({
-                    'magento_instance': self.instance1.id}):
+                    'magento_channel': self.channel1.id}):
                 states = MagentoOrderState.create_all_using_magento_data(
                     load_json('order-states', 'all')
                 )
@@ -115,7 +115,7 @@ class TestSale(TestBase):
 
             for state in states:
                 self.assertEqual(
-                    state.instance.id, self.instance1.id
+                    state.channel.id, self.channel1.id
                 )
 
     def test_0010_check_tryton_state(self):
@@ -207,7 +207,7 @@ class TestSale(TestBase):
 
             carriers_before_import = MagentoCarrier.search([])
             with Transaction().set_context({
-                    'magento_instance': self.instance1.id
+                    'magento_channel': self.channel1.id
             }):
                 carriers = MagentoCarrier.create_all_using_magento_data(
                     load_json('carriers', 'shipping_methods')
@@ -217,8 +217,8 @@ class TestSale(TestBase):
                 self.assertTrue(carriers_after_import > carriers_before_import)
                 for carrier in carriers:
                     self.assertEqual(
-                        carrier.instance.id,
-                        Transaction().context['magento_instance']
+                        carrier.channel.id,
+                        Transaction().context['magento_channel']
                     )
 
     def test_0030_import_sale_order_with_products_with_new(self):
@@ -233,7 +233,7 @@ class TestSale(TestBase):
             self.setup_defaults()
 
             with Transaction().set_context({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_store_view': self.store_view,
                 'magento_website': self.website1.id,
             }):
@@ -284,7 +284,7 @@ class TestSale(TestBase):
             self.setup_defaults()
 
             with Transaction().set_context({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_store_view': self.store_view,
                 'magento_website': self.website1.id,
             }):
@@ -333,7 +333,7 @@ class TestSale(TestBase):
         with Transaction().start(DB_NAME, USER, CONTEXT):
             self.setup_defaults()
             with Transaction().set_context({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_store_view': self.store_view.id,
                 'magento_website': self.website1.id,
             }):
@@ -385,7 +385,7 @@ class TestSale(TestBase):
             self.setup_defaults()
 
             with Transaction().set_context({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_store_view': self.store_view.id,
                 'magento_website': self.website1.id,
             }):
@@ -435,7 +435,7 @@ class TestSale(TestBase):
             self.setup_defaults()
 
             with Transaction().set_context({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_store_view': self.store_view.id,
                 'magento_website': self.website1.id,
             }):
@@ -498,7 +498,7 @@ class TestSale(TestBase):
         with Transaction().start(DB_NAME, USER, CONTEXT):
             self.setup_defaults()
             with Transaction().set_context({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_store_view': self.store_view,
                 'magento_website': self.website1.id,
             }):
@@ -607,7 +607,7 @@ class TestSale(TestBase):
             self.setup_defaults()
 
             with Transaction().set_context({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_store_view': self.store_view.id,
                 'magento_website': self.website1.id,
             }):
@@ -666,7 +666,7 @@ class TestSale(TestBase):
             self.setup_defaults()
 
             with Transaction().set_context({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_store_view': self.store_view.id,
                 'magento_website': self.website1.id,
             }):
@@ -732,7 +732,7 @@ class TestSale(TestBase):
         with Transaction().start(DB_NAME, USER, CONTEXT):
             self.setup_defaults()
             with Transaction().set_context({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_store_view': self.store_view.id,
                 'magento_website': self.website1.id,
             }):
@@ -793,7 +793,7 @@ class TestSale(TestBase):
         with Transaction().start(DB_NAME, USER, CONTEXT):
             self.setup_defaults()
             with Transaction().set_context({
-                'magento_instance': self.instance1.id,
+                'magento_channel': self.channel1.id,
                 'magento_store_view': self.store_view.id,
                 'magento_website': self.website1.id,
             }):
