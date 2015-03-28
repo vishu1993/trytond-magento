@@ -9,9 +9,8 @@
 """
 from trytond.pool import Pool
 from magento_ import (
-    InstanceWebsite, WebsiteStore, WebsiteStoreView,
     TestConnectionStart, TestConnection, ImportWebsitesStart, ImportWebsites,
-    ExportInventoryStart, ExportInventory, StorePriceTier,
+    ExportInventoryStart, ExportInventory, MagentoTier,
     ExportTierPricesStart, ExportTierPrices, ExportTierPricesStatus,
     ExportShipmentStatusStart, ExportShipmentStatus, ImportOrderStatesStart,
     ImportOrderStates, ImportCarriersStart, ImportCarriers, MagentoException
@@ -19,7 +18,7 @@ from magento_ import (
 from channel import Channel
 from party import Party, MagentoWebsiteParty, Address
 from product import (
-    Category, MagentoInstanceCategory, Template, MagentoWebsiteTemplate,
+    Category, MagentoInstanceCategory, Product,
     ImportCatalogStart, ImportCatalog, UpdateCatalogStart, UpdateCatalog,
     ProductPriceTier, ExportCatalogStart, ExportCatalog
 )
@@ -31,7 +30,7 @@ from sale import (
     ExportOrderStatusStart, ExportOrderStatus, StockShipmentOut, SaleLine
 )
 from bom import BOM
-from tax import StoreViewTax, StoreViewTaxRelation
+from tax import MagentoTax, MagentoTaxRelation
 
 
 def register():
@@ -40,10 +39,7 @@ def register():
     """
     Pool.register(
         Channel,
-        InstanceWebsite,
-        WebsiteStore,
-        StorePriceTier,
-        WebsiteStoreView,
+        MagentoTier,
         MagentoInstanceCarrier,
         TestConnectionStart,
         ImportWebsitesStart,
@@ -58,8 +54,7 @@ def register():
         Category,
         MagentoException,
         MagentoInstanceCategory,
-        Template,
-        MagentoWebsiteTemplate,
+        Product,
         ProductPriceTier,
         ImportCatalogStart,
         ExportCatalogStart,
@@ -75,8 +70,8 @@ def register():
         ExportOrderStatusStart,
         SaleLine,
         BOM,
-        StoreViewTax,
-        StoreViewTaxRelation,
+        MagentoTax,
+        MagentoTaxRelation,
         module='magento', type_='model'
     )
     Pool.register(

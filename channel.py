@@ -5,7 +5,10 @@
     :copyright: (c) 2015 by Openlabs Technologies & Consulting (P) Limited
     :license: see LICENSE for more details.
 """
+from datetime import datetime
 import magento
+import xmlrpclib
+import socket
 
 from trytond.pool import PoolMeta, Pool
 from trytond.transaction import Transaction
@@ -41,14 +44,12 @@ class Channel:
         help="This helps to distinguish between orders from different "
             "instances"
     )
-
     magento_default_account_expense = fields.Property(fields.Many2One(
         'account.account', 'Account Expense', domain=[
             ('kind', '=', 'expense'),
             ('company', '=', Eval('company')),
         ], depends=['company'], required=True
     ))
-
     #: Used to set revenue account while creating products.
     magento_default_account_revenue = fields.Property(fields.Many2One(
         'account.account', 'Account Revenue', domain=[
@@ -56,6 +57,48 @@ class Channel:
             ('company', '=', Eval('company')),
         ], depends=['company'], required=True
     ))
+    magento_website_id = fields.Integer(
+        'Website ID', readonly=True, required=True
+    )
+    magento_website_name = fields.Integer(
+        'Website Name', readonly=True, required=True
+    )
+    magento_website_code = fields.Char(
+        'Website Code', required=True, readonly=True
+    )
+    magento_default_uom = fields.Many2One('product.uom', 'Default Product UOM')
+    magento_root_category_id = fields.Integer(
+        'Root Category ID', required=True
+    )
+    magento_store_name = fields.Char('Store Name', required=True)
+    magento_store_id = fields.Integer(
+        'Store ID', readonly=True, required=True
+    )
+    magentod_last_order_import_time = fields.DateTime('Last Order Import Time')
+    magentod_last_order_export_time = fields.DateTime("Last Order Export Time")
+
+    #: Last time at which the shipment status was exported to magento
+    last_shipment_export_time = fields.DateTime('Last shipment export time')
+
+    #: Checking this will make sure that only the done shipments which have a
+    #: carrier and tracking reference are exported.
+    export_tracking_information = fields.Boolean(
+        'Export tracking information', help='Checking this will make sure'
+        ' that only the done shipments which have a carrier and tracking '
+        'reference are exported. This will update carrier and tracking '
+        'reference on magento for the exported shipments as well.'
+    )
+    magento_taxes = fields.One2Many(
+        "sale.channel.magento.tax", "channel", "Taxes"
+    )
+    magento_price_tiers = fields.One2Many(
+        'sale.channel.magento.price_tier', 'channel', 'Default Price Tiers'
+    )
+    listed_products = fields.Function(
+        fields.One2Many(
+            'product.product', None, 'Channel Listings',
+        ), 'get_listed_products'
+    )
 
     @classmethod
     def get_source(cls):
@@ -66,12 +109,45 @@ class Channel:
         res.append(('magento', 'Magento'))
         return res
 
+    def get_listed_products(self):
+        ""
+        SaleChannelListing = Pool().get('product.product.channel_listing')
+
+        records = SaleChannelListing.search([
+            ('channel', '=', self.id)
+        ])
+        return [res.product for res in records]
+
     @staticmethod
     def default_magento_order_prefix():
         """
         Sets default value for magento order prefix
         """
         return 'mag_'
+
+    @staticmethod
+    def default_default_uom():
+        """
+        Sets default product uom for website
+        """
+        ProductUom = Pool().get('product.uom')
+
+        return ProductUom.search([('name', '=', 'Unit')])[0].id
+
+    @staticmethod
+    def default_magento_root_category_id():
+        """
+        Sets default root category id. Is set to 1, because the default
+        root category is 1
+        """
+        return 1
+
+    def get_taxes(self, rate):
+        "Return list of tax records with the given rate"
+        for mag_tax in self.magento_taxes:
+            if mag_tax.tax_percent == rate:
+                return list(mag_tax.taxes)
+        return []
 
     @classmethod
     @ModelView.button_action('magento.wizard_import_order_states')
@@ -206,3 +282,232 @@ class Channel:
                     mag_carriers = order_config_api.get_shipping_methods()
 
                 InstanceCarrier.create_all_using_magento_data(mag_carriers)
+
+    def import_magento_products(self):
+        "Import products for this magento channel"
+        Product = Pool().get('product.template')
+
+        Transaction().set_context({
+            'magento_channel': self.id,
+        })
+        with magento.Product(
+            self.magento_url, self.magento_api_user, self.magento_api_key
+        ) as product_api:
+            # TODO: Implement pagination and import each product as async task
+            magento_products = product_api.list()
+
+            products = []
+            for magento_product in magento_products:
+                products.append(
+                    Product.find_or_create_using_magento_data(magento_product)
+                )
+
+        return map(int, products)
+
+    def import_order_from_magento(self):
+        """
+        Imports sale from magento
+
+        :return: List of active record of sale imported
+        """
+        Sale = Pool().get('sale.sale')
+        MagentoOrderState = Pool().get('magento.order_state')
+
+        new_sales = []
+        with Transaction().set_context({
+            'magento_channel': self.id,
+        }):
+
+            order_states = MagentoOrderState.search([
+                ('channel', '=', self.id),
+                ('use_for_import', '=', True)
+            ])
+            order_states_to_import_in = map(
+                lambda state: state.code, order_states
+            )
+
+            if not order_states_to_import_in:
+                self.raise_user_error("states_not_found")
+
+            with magento.Order(
+                self.magento_url, self.magento_api_user, self.magento_api_key
+            ) as order_api:
+                # Filter orders with date and store_id using list()
+                # then get info of each order using info()
+                # and call find_or_create_using_magento_data on sale
+                filter = {
+                    'store_id': {'=': self.magento_store_id},
+                    'state': {'in': order_states_to_import_in},
+                }
+                if self.last_order_import_time:
+                    last_order_import_time = \
+                        self.last_order_import_time.replace(microsecond=0)
+                    filter.update({
+                        'updated_at': {
+                            'gteq': last_order_import_time.isoformat(' ')
+                        },
+                    })
+                self.write([self], {
+                    'last_order_import_time': datetime.utcnow()
+                })
+                orders = order_api.list(filter)
+                for order in orders:
+                    new_sales.append(
+                        Sale.find_or_create_using_magento_data(
+                            order_api.info(order['increment_id'])
+                        )
+                    )
+
+        return new_sales
+
+    def export_order_status(self, store_views=None):
+        """
+        Export sales orders status to magento.
+
+        :param store_views: List of active record of store view
+        """
+        if store_views is None:
+            store_views = self.search([])
+
+        for store_view in store_views:
+            store_view.export_order_status_for_store_view()
+
+    def export_order_status_for_store_view(self):
+        """
+        Export sale orders to magento for the current store view.
+        If last export time is defined, export only those orders which are
+        updated after last export time.
+
+        :return: List of active records of sales exported
+        """
+        Sale = Pool().get('sale.sale')
+
+        exported_sales = []
+        domain = [('magento_store_view', '=', self.id)]
+
+        if self.last_order_export_time:
+            domain = [('write_date', '>=', self.last_order_export_time)]
+
+        sales = Sale.search(domain)
+
+        self.last_order_export_time = datetime.utcnow()
+        self.save()
+
+        for sale in sales:
+            exported_sales.append(sale.export_order_status_to_magento())
+
+        return exported_sales
+
+    @classmethod
+    def import_orders(cls, store_views=None):
+        """
+        Import orders from magento for store views
+
+        :param store_views: Active record list of store views
+        """
+        if store_views is None:
+            store_views = cls.search([])
+
+        for store_view in store_views:
+            store_view.import_order_from_store_view()
+
+    @classmethod
+    def export_shipment_status(cls, store_views=None):
+        """
+        Export Shipment status for shipments related to current store view.
+        This method is called by cron.
+
+        :param store_views: List of active records of store_view
+        """
+        if store_views is None:
+            store_views = cls.search([])
+
+        for store_view in store_views:
+            # Set the channel in context
+            with Transaction().set_context(
+                magento_channel=store_view.channel.id
+            ):
+                store_view.export_shipment_status_to_magento()
+
+    def export_shipment_status_to_magento(self):
+        """
+        Exports shipment status for shipments to magento, if they are shipped
+
+        :return: List of active record of shipment
+        """
+        Shipment = Pool().get('stock.shipment.out')
+        Sale = Pool().get('sale.sale')
+        SaleLine = Pool().get('sale.line')
+
+        channel = self.channel
+
+        sale_domain = [
+            ('magento_store_view', '=', self.id),
+            ('shipment_state', '=', 'sent'),
+            ('magento_id', '!=', None),
+            ('shipments', '!=', None),
+        ]
+
+        if self.last_shipment_export_time:
+            sale_domain.append(
+                ('write_date', '>=', self.last_shipment_export_time)
+            )
+
+        sales = Sale.search(sale_domain)
+
+        self.last_shipment_export_time = datetime.utcnow()
+        self.save()
+
+        for sale in sales:
+            # Get the increment id from the sale reference
+            increment_id = sale.reference[
+                len(channel.magento_order_prefix): len(sale.reference)
+            ]
+
+            for shipment in sale.shipments:
+                try:
+                    # Some checks to make sure that only valid shipments are
+                    # being exported
+                    if shipment.is_tracking_exported_to_magento or \
+                            shipment.state not in ('packed', 'done') or \
+                            shipment.magento_increment_id:
+                        sales.pop(sale)
+                        continue
+                    with magento.Shipment(
+                        channel.magento_url, channel.magento_api_user,
+                        channel.magento_api_key
+                    ) as shipment_api:
+                        item_qty_map = {}
+                        for move in shipment.outgoing_moves:
+                            if isinstance(move.origin, SaleLine) \
+                                    and move.origin.magento_id:
+                                # This is done because there can be multiple
+                                # lines with the same product and they need
+                                # to be send as a sum of quanitities
+                                item_qty_map.setdefault(
+                                    str(move.origin.magento_id), 0
+                                )
+                                item_qty_map[str(move.origin.magento_id)] += \
+                                    move.quantity
+                        shipment_increment_id = shipment_api.create(
+                            order_increment_id=increment_id,
+                            items_qty=item_qty_map
+                        )
+                        Shipment.write(list(sale.shipments), {
+                            'magento_increment_id': shipment_increment_id,
+                        })
+
+                        if self.export_tracking_information and (
+                            shipment.tracking_number and shipment.carrier
+                        ):
+                            shipment.export_tracking_info_to_magento()
+                except xmlrpclib.Fault, fault:
+                    if fault.faultCode == 102:
+                        # A shipment already exists for this order,
+                        # we cannot do anything about it.
+                        # Maybe it was already exported earlier or was created
+                        # separately on magento
+                        # Hence, just continue
+                        continue
+
+        return sales

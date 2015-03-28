@@ -65,7 +65,6 @@ class TestBase(unittest.TestCase):
         Setup default data
         """
         self.Channel = POOL.get('sale.channel')
-        self.Website = POOL.get('magento.instance.website')
         self.Store = POOL.get('magento.website.store')
         self.StoreView = POOL.get('magento.store.store_view')
         self.Uom = POOL.get('product.uom')
@@ -284,6 +283,9 @@ class TestBase(unittest.TestCase):
                     self.get_account_by_kind('expense'),
                 'magento_default_account_revenue':
                     self.get_account_by_kind('revenue'),
+                'magento_website_name': 'A test website 1',
+                'magento_website_id': 1,
+                'magento_website_code': 'test_code',
             }])
 
         self.User.set_preferences({'current_channel': self.channel2})
@@ -295,9 +297,6 @@ class TestBase(unittest.TestCase):
 
         # Create one website under each channel
         self.website1, = self.Website.create([{
-            'name': 'A test website 1',
-            'magento_id': 1,
-            'code': 'test_code',
             'channel': self.channel1,
         }])
         self.website2, = self.Website.create([{

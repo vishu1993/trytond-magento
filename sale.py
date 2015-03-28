@@ -272,14 +272,12 @@ class Sale:
         Sale = Pool().get('sale.sale')
         Party = Pool().get('party.party')
         Address = Pool().get('party.address')
-        StoreView = Pool().get('magento.store.store_view')
         Currency = Pool().get('currency.currency')
         Uom = Pool().get('product.uom')
         MagentoOrderState = Pool().get('magento.order_state')
+        Channel = Pool().get('sale.channel')
 
-        store_view = StoreView(Transaction().context.get('magento_store_view'))
-        channel = store_view.channel
-
+        channel = Channel(Transaction().context['magento_channel'])
         currency = Currency.search_using_magento_code(
             order_data['order_currency_code']
         )
@@ -332,7 +330,6 @@ class Sale:
             'shipment_address': party_shipping_address or party_invoice_address,
             'magento_id': int(order_data['order_id']),
             'channel': channel.id,
-            'magento_store_view': store_view.id,
             'invoice_method': tryton_state['invoice_method'],
             'shipment_method': shipment_method,
             'lines': [],
