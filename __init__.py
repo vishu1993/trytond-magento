@@ -20,7 +20,8 @@ from party import Party, MagentoWebsiteParty, Address
 from product import (
     Category, MagentoInstanceCategory, Product,
     ImportCatalogStart, ImportCatalog, UpdateCatalogStart, UpdateCatalog,
-    ProductPriceTier, ExportCatalogStart, ExportCatalog
+    ProductPriceTier, ExportCatalogStart, ExportCatalog,
+    ProductSaleChannelListing
 )
 from country import Country, Subdivision
 from currency import Currency
@@ -72,6 +73,7 @@ def register():
         BOM,
         MagentoTax,
         MagentoTaxRelation,
+        ProductSaleChannelListing,
         module='magento', type_='model'
     )
     Pool.register(

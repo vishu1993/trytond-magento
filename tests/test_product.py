@@ -112,7 +112,7 @@ class TestProduct(TestBase):
         """
         Category = POOL.get('product.category')
         ProductTemplate = POOL.get('product.template')
-        MagentoTemplate = POOL.get('magento.website.template')
+        ProductSaleChannelListing = POOL.get('product.product.channel_listing')
 
         with Transaction().start(DB_NAME, USER, CONTEXT) as txn:
             self.setup_defaults()
@@ -121,7 +121,6 @@ class TestProduct(TestBase):
 
             with txn.set_context({
                 'magento_channel': self.channel1,
-                'magento_website': self.website1,
                 'company': self.company,
             }):
                 Category.create_using_magento_data(category_data)
@@ -146,14 +145,14 @@ class TestProduct(TestBase):
                     )
                 )
 
-                # Make sure the categs are created only in website1 and not
-                # not in website2
-                self.assertTrue(MagentoTemplate.search(
-                    [('website', '=', self.website1)],
+                # Make sure the categs are created only in channel1 and not
+                # not in channel2
+                self.assertTrue(ProductSaleChannelListing.search(
+                    [('channel', '=', self.channel1)],
                     count=True) > 0
                 )
-                self.assertTrue(MagentoTemplate.search(
-                    [('website', '=', self.website2)],
+                self.assertTrue(ProductSaleChannelListing.search(
+                    [('channel', '=', self.channel2)],
                     count=True) == 0
                 )
 
@@ -162,23 +161,22 @@ class TestProduct(TestBase):
         Test the import of a product using magento data which doesn't
         have categories
         """
-        ProductTemplate = POOL.get('product.template')
+        Product = POOL.get('product.product')
 
         with Transaction().start(DB_NAME, USER, CONTEXT) as txn:
             self.setup_defaults()
             product_data = load_json('products', '17-wo-category')
             with txn.set_context({
                 'magento_channel': self.channel1,
-                'magento_website': self.website1,
                 'company': self.company,
             }):
-                template = ProductTemplate.find_or_create_using_magento_data(
+                product = Product.find_or_create_using_magento_data(
                     product_data
                 )
-                self.assertEqual(template.magento_product_type, 'simple')
-                self.assertEqual(template.name, 'BlackBerry 8100 Pearl')
+                self.assertEqual(product.magento_product_type, 'simple')
+                self.assertEqual(product.name, 'BlackBerry 8100 Pearl')
                 self.assertEqual(
-                    template.category.name, 'Unclassified Magento Products'
+                    product.category.name, 'Unclassified Magento Products'
                 )
 
     def test_0040_import_configurable_product(self):
@@ -195,7 +193,6 @@ class TestProduct(TestBase):
 
             with txn.set_context({
                 'magento_channel': self.channel1,
-                'magento_website': self.website1,
                 'company': self.company,
             }):
                 Category.create_using_magento_data(category_data)
@@ -222,7 +219,6 @@ class TestProduct(TestBase):
             product_data = load_json('products', 54)
             with txn.set_context({
                 'magento_channel': self.channel1,
-                'magento_website': self.website1,
                 'company': self.company,
             }):
                 Category.create_using_magento_data(category_data)
@@ -247,7 +243,6 @@ class TestProduct(TestBase):
             product_data = load_json('products', '170')
             with txn.set_context({
                 'magento_channel': self.channel1,
-                'magento_website': self.website1,
                 'company': self.company,
             }):
                 template = ProductTemplate.find_or_create_using_magento_data(
@@ -271,8 +266,6 @@ class TestProduct(TestBase):
 
             with Transaction().set_context({
                 'magento_channel': self.channel1.id,
-                'magento_website': self.website1.id,
-                'magento_store': self.store,
                 'company': self.company,
             }):
 
@@ -329,8 +322,6 @@ class TestProduct(TestBase):
             self.setup_defaults()
             with Transaction().set_context({
                 'magento_channel': self.channel1.id,
-                'magento_website': self.website1.id,
-                'magento_store': self.store,
                 'company': self.company,
             }):
 
@@ -386,7 +377,6 @@ class TestProduct(TestBase):
 
             with Transaction().set_context({
                 'magento_channel': self.channel1.id,
-                'magento_website': self.website1.id,
                 'company': self.company,
             }):
 
@@ -402,12 +392,11 @@ class TestProduct(TestBase):
                 with patch(
                     'magento.Inventory', mock_inventory_api(), create=True
                 ):
-                    self.website1.export_inventory_to_magento()
+                    self.channel1.export_inventory_to_magento()
 
     def test_0090_tier_prices(self):
         """Checks the function field on product price tiers
         """
-        Store = POOL.get('magento.website.store')
         PriceList = POOL.get('product.price_list')
         ProductPriceTier = POOL.get('product.price_tier')
         ProductTemplate = POOL.get('product.template')
@@ -419,8 +408,6 @@ class TestProduct(TestBase):
             context = User.get_preferences(context_only=True)
             context.update({
                 'magento_channel': self.channel1.id,
-                'magento_website': self.website1.id,
-                'magento_store': self.store.id,
                 'company': self.company.id,
             })
             with txn.set_context(context):
@@ -465,7 +452,6 @@ class TestProduct(TestBase):
 
             with txn.set_context({
                 'magento_channel': self.channel1.id,
-                'magento_website': self.website1.id,
                 'magento_attribute_set': 1,
                 'company': self.company.id,
             }):
