@@ -2,7 +2,7 @@
 """
     test_models
 
-    Tests Magento Instance, Website, Store and StoreView
+    Tests Magento Channel, Website, Store and StoreView
 
     :copyright: (c) 2013 by Openlabs Technologies & Consulting (P) Limited
     :license: BSD, see LICENSE for more details.
@@ -31,7 +31,7 @@ class TestModels(TestBase):
     Tests instance, website, store and store view
     '''
 
-    def test0010create_instance(self):
+    def test0010create_channel(self):
         '''
         Tests if instance is created
         '''
@@ -40,19 +40,28 @@ class TestModels(TestBase):
 
             with txn.set_context({'company': self.company.id}):
                 values = {
-                    'name': 'Test Instance',
-                    'url': 'some test url',
-                    'api_user': 'admin',
-                    'api_key': 'testkey',
-                    'default_account_expense':
+                    'name': 'Test channel',
+                    'price_list': self.price_list,
+                    'invoice_method': 'order',
+                    'shipment_method': 'order',
+                    'source': 'manual',
+                    'create_users': [('add', [USER])],
+                    'warehouse': self.warehouse,
+                    'payment_term': self.payment_term,
+                    'company': self.company.id,
+
+                    'magento_url': 'some test url 2',
+                    'magento_api_user': 'admin',
+                    'magento_api_key': 'testkey',
+                    'magento_default_account_expense':
                         self.get_account_by_kind('expense'),
-                    'default_account_revenue':
+                    'magento_default_account_revenue':
                         self.get_account_by_kind('revenue'),
                 }
 
-                instance, = self.Instance.create([values])
+                channel, = self.Channel.create([values])
 
-                self.assert_(instance)
+                self.assert_(channel)
 
     def test0020create_website(self):
         '''
@@ -65,13 +74,13 @@ class TestModels(TestBase):
                 'name': 'A test website',
                 'magento_id': 3,
                 'code': 'test_code',
-                'instance': self.instance1.id,
+                'channel': self.channel1.id,
             }
 
             website, = self.Website.create([values])
             self.assert_(website)
 
-            self.assertEqual(website.company, self.instance1.company)
+            self.assertEqual(website.company, self.channel1.company)
 
     def test0030create_store(self):
         '''
@@ -90,7 +99,7 @@ class TestModels(TestBase):
             self.assert_(store)
 
             self.assertEqual(store.company, self.website1.company)
-            self.assertEqual(store.instance, self.website1.instance)
+            self.assertEqual(store.channel, self.website1.channel)
 
     def test0040create_store_view(self):
         '''
@@ -109,7 +118,7 @@ class TestModels(TestBase):
             store_view, = self.StoreView.create([values])
             self.assert_(store_view)
 
-            self.assertEqual(store_view.instance, self.store.instance)
+            self.assertEqual(store_view.channel, self.store.channel)
             self.assertEqual(store_view.company, self.store.company)
             self.assertEqual(store_view.website, self.store.website)
 
