@@ -211,13 +211,12 @@ class TestProduct(TestBase):
                     'configurable'
                 )
 
-    @unittest.skip(' ')
     def test_0050_import_grouped_product(self):
         """
         Test the import of a grouped product using magento data
         """
         Category = POOL.get('product.category')
-        ProductTemplate = POOL.get('product.template')
+        Product = POOL.get('product.product')
 
         with Transaction().start(DB_NAME, USER, CONTEXT) as txn:
             self.setup_defaults()
@@ -228,22 +227,22 @@ class TestProduct(TestBase):
                 'company': self.company.id,
             }):
                 Category.create_using_magento_data(category_data)
-                template = ProductTemplate.find_or_create_using_magento_data(
+                product = Product.find_or_create_using_magento_data(
                     product_data
                 )
                 self.assertEqual(
-                    template.category.magento_ids[0].magento_id, 22
+                    product.category.magento_ids[0].magento_id, 22
                 )
                 self.assertEqual(
-                    template.magento_product_type, 'grouped'
+                    product.channel_listings[0].magento_product_type,
+                    'grouped'
                 )
 
-    @unittest.skip(' ')
     def test_0060_import_downloadable_product(self):
         """
         Test the import of a downloadable product using magento data
         """
-        ProductTemplate = POOL.get('product.template')
+        Product = POOL.get('product.product')
 
         with Transaction().start(DB_NAME, USER, CONTEXT) as txn:
             self.setup_defaults()
@@ -252,12 +251,15 @@ class TestProduct(TestBase):
                 'magento_channel': self.channel1.id,
                 'company': self.company.id,
             }):
-                template = ProductTemplate.find_or_create_using_magento_data(
+                product = Product.find_or_create_using_magento_data(
                     product_data
                 )
-                self.assertEqual(template.magento_product_type, 'downloadable')
                 self.assertEqual(
-                    template.category.name,
+                    product.channel_listings[0].magento_product_type,
+                    'downloadable'
+                )
+                self.assertEqual(
+                    product.category.name,
                     'Unclassified Magento Products'
                 )
 
