@@ -274,7 +274,7 @@ class Product:
         SaleChannelListing = Pool().get('product.product.channel_listing')
 
         records = SaleChannelListing.search([
-            ('channel', '=', Transaction().context.get('magento_channel'))
+            ('channel', '=', Transaction().context.get('magento_channel')),
             ('product_identifier', '=', magento_id),
         ])
 
@@ -319,9 +319,9 @@ class Product:
         :param: product_data
         :returns: Dictionary of values
         """
-        Website = Pool().get('magento.instance.website')
+        Channel = Pool().get('sale.channel')
 
-        website = Website(Transaction().context.get('magento_website'))
+        channel = Channel(Transaction().context.get('magento_channel'))
         return {
             'name': product_data.get('name') or
                 ('SKU: ' + product_data.get('sku')),
@@ -331,13 +331,13 @@ class Product:
                 0.00
             ),
             'cost_price': Decimal(product_data.get('cost') or 0.00),
-            'default_uom': website.default_uom.id,
+            'default_uom': channel.magento_default_uom.id,
             'salable': True,
-            'sale_uom': website.default_uom.id,
+            'sale_uom': channel.magento_default_uom.id,
             'account_expense':
-                website.channel.magento_default_account_expense.id,
+                channel.magento_default_account_expense.id,
             'account_revenue':
-                website.channel.magento_default_account_revenue.id,
+                channel.magento_default_account_revenue.id,
         }
 
     @classmethod
@@ -375,12 +375,14 @@ class Product:
                 'description': product_data['description'],
                 'code': product_data['sku'],
                 'channel_listings': [('create', [{
-                    'product_identifier': int(product_data['product_id']),
+                    'product_identifier': product_data['product_id'],
                     'channel': Transaction().context.get('magento_channel'),
+                    'magento_product_type': 'simple',
                 }])],
             }])],
             'category': category.id,
         })
+        print product_template_values
         product_template, = Template.create([product_template_values])
 
         return product_template.products[0]

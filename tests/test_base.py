@@ -243,6 +243,11 @@ class TestBase(unittest.TestCase):
             ('type', '=', 'warehouse')
         ], limit=1)
 
+        # Search product uom
+        self.uom, = self.Uom.search([
+            ('name', '=', 'Unit'),
+        ])
+
         # Create two channels
         with Transaction().set_context({'company': self.company.id}):
             self.channel1, = self.Channel.create([{
@@ -250,7 +255,7 @@ class TestBase(unittest.TestCase):
                 'price_list': self.price_list,
                 'invoice_method': 'order',
                 'shipment_method': 'order',
-                'source': 'manual',
+                'source': 'magento',
                 'create_users': [('add', [USER])],
                 'warehouse': self.warehouse,
                 'payment_term': self.payment_term,
@@ -262,6 +267,7 @@ class TestBase(unittest.TestCase):
                     self.get_account_by_kind('expense'),
                 'magento_default_account_revenue':
                     self.get_account_by_kind('revenue'),
+                'magento_default_uom': self.uom,
                 'magento_website_name': 'A test website 1',
                 'magento_website_id': 1,
                 'magento_website_code': 'test_code',
@@ -273,7 +279,7 @@ class TestBase(unittest.TestCase):
                 'price_list': self.price_list,
                 'invoice_method': 'order',
                 'shipment_method': 'order',
-                'source': 'manual',
+                'source': 'magento',
                 'create_users': [('add', [USER])],
                 'warehouse': self.warehouse,
                 'payment_term': self.payment_term,
@@ -286,6 +292,7 @@ class TestBase(unittest.TestCase):
                     self.get_account_by_kind('expense'),
                 'magento_default_account_revenue':
                     self.get_account_by_kind('revenue'),
+                'magento_default_uom': self.uom,
                 'magento_website_name': 'A test website 1',
                 'magento_website_id': 1,
                 'magento_website_code': 'test_code',
@@ -294,11 +301,6 @@ class TestBase(unittest.TestCase):
             }])
 
         self.User.set_preferences({'current_channel': self.channel2})
-
-        # Search product uom
-        self.uom, = self.Uom.search([
-            ('name', '=', 'Unit'),
-        ])
 
         model_field, = self.ModelField.search([
             ('name', '=', 'account_revenue'),
