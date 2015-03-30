@@ -377,12 +377,11 @@ class Product:
                 'channel_listings': [('create', [{
                     'product_identifier': product_data['product_id'],
                     'channel': Transaction().context.get('magento_channel'),
-                    'magento_product_type': 'simple',
+                    'magento_product_type': product_data['type'],
                 }])],
             }])],
             'category': category.id,
         })
-        print product_template_values
         product_template, = Template.create([product_template_values])
 
         return product_template.products[0]

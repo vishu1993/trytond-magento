@@ -158,7 +158,6 @@ class TestProduct(TestBase):
                     count=True) == 0
                 )
 
-    @unittest.skip(' ')
     def test_0300_import_product_wo_categories(self):
         """
         Test the import of a product using magento data which doesn't
@@ -176,13 +175,14 @@ class TestProduct(TestBase):
                 product = Product.find_or_create_using_magento_data(
                     product_data
                 )
-                self.assertEqual(product.magento_product_type, 'simple')
+                self.assertEqual(
+                    product.channel_listings[0].magento_product_type, 'simple'
+                )
                 self.assertEqual(product.name, 'BlackBerry 8100 Pearl')
                 self.assertEqual(
                     product.category.name, 'Unclassified Magento Products'
                 )
 
-    @unittest.skip(' ')
     def test_0040_import_configurable_product(self):
         """
         Test the import of a configurable product using Magento Data
@@ -207,7 +207,8 @@ class TestProduct(TestBase):
                     product.category.magento_ids[0].magento_id, 17
                 )
                 self.assertEqual(
-                    product.magento_product_type, 'configurable'
+                    product.channel_listings[0].magento_product_type,
+                    'configurable'
                 )
 
     @unittest.skip(' ')
