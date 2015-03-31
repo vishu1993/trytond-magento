@@ -263,12 +263,11 @@ class TestProduct(TestBase):
                     'Unclassified Magento Products'
                 )
 
-    @unittest.skip(' ')
     def test_0070_update_product_using_magento_data(self):
         """
         Check if the product template gets updated using magento data
         """
-        ProductTemplate = POOL.get('product.template')
+        Product = POOL.get('product.product')
         Category = POOL.get('product.category')
 
         with Transaction().start(DB_NAME, USER, CONTEXT):
@@ -285,48 +284,47 @@ class TestProduct(TestBase):
 
                 product_data = load_json('products', '135')
 
-                product_template1 = \
-                    ProductTemplate.find_or_create_using_magento_data(
+                product1 = \
+                    Product.find_or_create_using_magento_data(
                         product_data
                     )
 
-                product_template_id_before_updation = product_template1.id
-                product_template_name_before_updation = product_template1.name
+                product_id_before_updation = product1.id
+                product_name_before_updation = product1.name
                 product_code_before_updation = \
-                    product_template1.products[0].code
+                    product1.products[0].code
                 product_description_before_updation = \
-                    product_template1.products[0].description
+                    product1.products[0].description
 
                 # Use a JSON file with product name, code and description
                 # changed and everything else same
                 product_data = load_json('products', '135001')
-                product_template2 = \
-                    product_template1.update_from_magento_using_data(
+                product2 = \
+                    product1.update_from_magento_using_data(
                         product_data
                     )
 
                 self.assertEqual(
-                    product_template_id_before_updation, product_template2.id
+                    product_id_before_updation, product2.id
                 )
                 self.assertNotEqual(
-                    product_template_name_before_updation,
-                    product_template2.name
+                    product_name_before_updation,
+                    product2.name
                 )
                 self.assertNotEqual(
                     product_code_before_updation,
-                    product_template2.products[0].code
+                    product2.products[0].code
                 )
                 self.assertNotEqual(
                     product_description_before_updation,
-                    product_template2.products[0].description
+                    product2.products[0].description
                 )
 
-    @unittest.skip(' ')
     def test_0103_update_product_using_magento_id(self):
         """
         Check if the product template gets updated using magento ID
         """
-        ProductTemplate = POOL.get('product.template')
+        Product = POOL.get('product.product')
         Category = POOL.get('product.category')
 
         with Transaction().start(DB_NAME, USER, CONTEXT):
@@ -341,47 +339,46 @@ class TestProduct(TestBase):
                 Category.create_using_magento_data(category_data)
 
                 product_data = load_json('products', '135001')
-                product_template1 = \
-                    ProductTemplate.find_or_create_using_magento_data(
+                product1 = \
+                    Product.find_or_create_using_magento_data(
                         product_data
                     )
 
-                product_template_id_before_updation = product_template1.id
-                product_template_name_before_updation = product_template1.name
+                product_id_before_updation = product1.id
+                product_name_before_updation = product1.name
                 product_code_before_updation = \
-                    product_template1.products[0].code
+                    product1.products[0].code
                 product_description_before_updation = \
-                    product_template1.products[0].description
+                    product1.products[0].description
 
                 # Use a JSON file with product name, code and description
                 # changed and everything else same
                 with patch('magento.Product', mock_product_api(), create=True):
-                    product_template2 = product_template1.update_from_magento()
+                    product2 = product1.update_from_magento()
 
                 self.assertEqual(
-                    product_template_id_before_updation, product_template2.id
+                    product_id_before_updation, product2.id
                 )
                 self.assertNotEqual(
-                    product_template_name_before_updation,
-                    product_template2.name
+                    product_name_before_updation,
+                    product2.name
                 )
                 self.assertNotEqual(
                     product_code_before_updation,
-                    product_template2.products[0].code
+                    product2.products[0].code
                 )
                 self.assertNotEqual(
                     product_description_before_updation,
-                    product_template2.products[0].description
+                    product2.products[0].description
                 )
 
-    @unittest.skip(' ')
     def test_0080_export_product_stock_information(self):
         """
         This test checks if the method to call for updation of product
         stock info does not break anywhere in between.
         This method does not check the API calls
         """
-        ProductTemplate = POOL.get('product.template')
+        Product = POOL.get('product.product')
         Category = POOL.get('product.category')
 
         with Transaction().start(DB_NAME, USER, CONTEXT):
@@ -397,7 +394,7 @@ class TestProduct(TestBase):
                 Category.create_using_magento_data(category_data)
 
                 product_data = load_json('products', '135')
-                ProductTemplate.find_or_create_using_magento_data(
+                Product.find_or_create_using_magento_data(
                     product_data
                 )
 
@@ -406,13 +403,12 @@ class TestProduct(TestBase):
                 ):
                     self.channel1.export_inventory_to_magento()
 
-    @unittest.skip(' ')
     def test_0090_tier_prices(self):
         """Checks the function field on product price tiers
         """
         PriceList = POOL.get('product.price_list')
         ProductPriceTier = POOL.get('product.price_tier')
-        ProductTemplate = POOL.get('product.template')
+        Product = POOL.get('product.product')
         Category = POOL.get('product.category')
         User = POOL.get('res.user')
 
@@ -428,8 +424,8 @@ class TestProduct(TestBase):
                 Category.create_using_magento_data(category_data)
 
                 product_data = load_json('products', '135')
-                product_template = \
-                    ProductTemplate.find_or_create_using_magento_data(
+                product = \
+                    Product.find_or_create_using_magento_data(
                         product_data
                     )
 
@@ -440,15 +436,16 @@ class TestProduct(TestBase):
                         'formula': 'unit_price*0.9'
                     }])]
                 }])
-                Store.write([self.store], {'price_list': price_list.id})
+                self.channel1.price_list = price_list
+                self.channel1.save()
 
                 tier, = ProductPriceTier.create([{
-                    'template': product_template.id,
+                    'template': product.id,
                     'quantity': 10,
                 }])
 
                 self.assertEqual(
-                    product_template.list_price * Decimal('0.9'), tier.price
+                    product.list_price * Decimal('0.9'), tier.price
                 )
 
     @unittest.skip(' ')
@@ -457,7 +454,7 @@ class TestProduct(TestBase):
         Check the export of product catalog to magento.
         This method does not check the API calls.
         """
-        ProductTemplate = POOL.get('product.template')
+        Product = POOL.get('product.product')
         Category = POOL.get('product.category')
         Uom = POOL.get('product.uom')
 
@@ -473,7 +470,7 @@ class TestProduct(TestBase):
                 category = Category.create_using_magento_data(category_data)
 
                 uom, = Uom.search([('name', '=', 'Unit')], limit=1)
-                product, = ProductTemplate.create([
+                product, = Product.create([
                     {
                         'name': 'Test product',
                         'list_price': Decimal('100'),

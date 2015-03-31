@@ -91,10 +91,8 @@ class Channel:
     magento_price_tiers = fields.One2Many(
         'sale.channel.magento.price_tier', 'channel', 'Default Price Tiers'
     )
-    listed_products = fields.Function(
-        fields.One2Many(
-            'product.product', None, 'Channel Listings',
-        ), 'get_listed_products'
+    product_listings = fields.One2Many(
+        'product.product.channel_listing', 'channel', 'Product Listings',
     )
 
     @classmethod
@@ -106,7 +104,7 @@ class Channel:
         res.append(('magento', 'Magento'))
         return res
 
-    def get_listed_products(self):
+    def get_product_listings(self):
         ""
         SaleChannelListing = Pool().get('product.product.channel_listing')
 
@@ -443,3 +441,36 @@ class Channel:
                         continue
 
         return sales
+
+    def export_inventory_to_magento(self):
+        """
+        Exports stock data of products from tryton to magento for this
+        website
+        :return: List of product templates
+        """
+        Location = Pool().get('stock.location')
+
+        products = []
+        locations = Location.search([('type', '=', 'storage')])
+
+        for listing in self.product_listings:
+            product = listing.product
+            products.append(product)
+
+            with Transaction().set_context({'locations': map(int, locations)}):
+                product_data = {
+                    'qty': product.quantity,
+                    'is_in_stock': '1' if listing.product.quantity > 0
+                        else '0',
+                }
+
+                # Update stock information to magento
+                with magento.Inventory(
+                    self.magento_url, self.magento_api_user,
+                    self.magento_api_key
+                ) as inventory_api:
+                    inventory_api.update(
+                        listing.product_identifier, product_data
+                    )
+
+        return products

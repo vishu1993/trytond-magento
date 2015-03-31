@@ -526,15 +526,15 @@ class ProductPriceTier(ModelSQL, ModelView):
 
         :param name: Name of field
         """
-        Store = Pool().get('magento.website.store')
+        Channel = Pool().get('sale.channel')
 
         if not Transaction().context.get('magento_store'):
             return 0
 
-        store = Store(Transaction().context['magento_store'])
-        return store.price_list.compute(
+        channel = Channel(Transaction().context['magento_channel'])
+        return channel.price_list.compute(
             None, self.template, self.template.list_price, self.quantity,
-            store.website.default_uom
+            channel.default_uom
         )
 
     template = fields.Many2One(
@@ -608,9 +608,9 @@ class UpdateCatalog(Wizard):
         """
         products = []
         with Transaction().set_context({'magento_channel': channel.id}):
-            for product in channel.listed_products:
+            for listing in channel.product_listings:
                 products.append(
-                    product.update_from_magento()
+                    listing.product.update_from_magento()
                 )
 
         return map(int, products)
