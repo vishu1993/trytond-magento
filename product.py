@@ -433,19 +433,19 @@ class Product:
 
         return self
 
-    def get_product_values_for_export_to_magento(self, categories, websites):
+    def get_product_values_for_export_to_magento(self, categories, channels):
         """Creates a dictionary of values which have to exported to magento for
         creating a product
 
         :param categories: List of Browse record of categories
-        :param websites: List of Browse record of websites
+        :param channels: List of Browse record of channels
         """
         return {
             'categories': map(
                 lambda mag_categ: mag_categ.magento_id,
                 categories[0].magento_ids
             ),
-            'websites': map(lambda website: website.magento_id, websites),
+            'websites': map(lambda c: c.magento_website_id, channels),
             'name': self.name,
             'description': self.description or self.name,
             'short_description': self.description or self.name,
@@ -466,12 +466,19 @@ class Product:
         Channel = Pool().get('sale.channel')
         SaleChannelListing = Pool().get('product.product.channel_listing')
 
+        channel = Channel(Transaction().context['magento_channel'])
+
         if not category.magento_ids:
             self.raise_user_error(
                 'invalid_category', (category.complete_name,)
             )
 
-        if self.magento_ids:
+        listing = SaleChannelListing.search([
+            ('channel', '=', channel.id),
+            ('product', '=', self.id),
+        ])
+
+        if listing:
             self.raise_user_error(
                 'invalid_product', (self.name,)
             )
@@ -480,8 +487,6 @@ class Product:
             self.raise_user_error(
                 'missing_product_code', (self.name,)
             )
-
-        channel = Channel(Transaction().context['magento_channel'])
 
         with magento.Product(
             channel.magento_url, channel.magento_api_user,
@@ -504,7 +509,7 @@ class Product:
                 ]
             )
             SaleChannelListing.create([{
-                'product_identifier': magento_id,
+                'product_identifier': str(magento_id),
                 'channel': channel.id,
                 'product': self.id,
                 'magento_product_type': 'simple',
@@ -521,31 +526,13 @@ class ProductPriceTier(ModelSQL, ModelView):
     __name__ = 'product.price_tier'
     _rec_name = 'quantity'
 
-    def get_price(self, name):
-        """Calculate the price of the product for quantity set in record
-
-        :param name: Name of field
-        """
-        Channel = Pool().get('sale.channel')
-
-        if not Transaction().context.get('magento_store'):
-            return 0
-
-        channel = Channel(Transaction().context['magento_channel'])
-        return channel.price_list.compute(
-            None, self.template, self.template.list_price, self.quantity,
-            channel.default_uom
-        )
-
     template = fields.Many2One(
         'product.template', 'Product Template', required=True, readonly=True,
     )
     quantity = fields.Float(
         'Quantity', required=True
     )
-    price = fields.Function(
-        fields.Numeric('Price'), 'get_price'
-    )
+    price = fields.Function(fields.Numeric('Price'), 'get_price')
 
     @classmethod
     def __setup__(cls):
@@ -559,6 +546,22 @@ class ProductPriceTier(ModelSQL, ModelView):
                 'Quantity in price tiers must be unique for a product'
             )
         ]
+
+    def get_price(self, name):
+        """Calculate the price of the product for quantity set in record
+
+        :param name: Name of field
+        """
+        Channel = Pool().get('sale.channel')
+
+        if not Transaction().context.get('magento_channel'):
+            return 0
+
+        channel = Channel(Transaction().context['magento_channel'])
+        return channel.price_list.compute(
+            None, self.template, self.template.list_price, self.quantity,
+            channel.magento_default_uom
+        )
 
 
 class UpdateCatalogStart(ModelView):

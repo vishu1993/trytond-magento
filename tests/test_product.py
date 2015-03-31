@@ -448,13 +448,12 @@ class TestProduct(TestBase):
                     product.list_price * Decimal('0.9'), tier.price
                 )
 
-    @unittest.skip(' ')
     def test_0110_export_catalog(self):
         """
         Check the export of product catalog to magento.
         This method does not check the API calls.
         """
-        Product = POOL.get('product.product')
+        ProductTemplate = POOL.get('product.template')
         Category = POOL.get('product.category')
         Uom = POOL.get('product.uom')
 
@@ -470,7 +469,7 @@ class TestProduct(TestBase):
                 category = Category.create_using_magento_data(category_data)
 
                 uom, = Uom.search([('name', '=', 'Unit')], limit=1)
-                product, = Product.create([
+                product_template, = ProductTemplate.create([
                     {
                         'name': 'Test product',
                         'list_price': Decimal('100'),
@@ -489,7 +488,7 @@ class TestProduct(TestBase):
                 with patch(
                     'magento.Product', mock_product_api(), create=True
                 ):
-                    product.export_to_magento(category)
+                    product_template.products[0].export_to_magento(category)
 
 
 def suite():
