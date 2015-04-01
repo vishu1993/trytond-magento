@@ -245,9 +245,9 @@ class Product:
 
         # TODO: handle case when same product (SKU matched)
         # from different store, then add channel to product listing
-        product_template = cls.find_using_magento_id(magento_id)
+        product = cls.find_using_magento_id(magento_id)
 
-        if not product_template:
+        if not product:
             # if product is not found get the info from magento and
             # delegate to create_using_magento_data
             channel = Channel(Transaction().context.get('magento_channel'))
@@ -275,7 +275,7 @@ class Product:
 
         records = SaleChannelListing.search([
             ('channel', '=', Transaction().context.get('magento_channel')),
-            ('product_identifier', '=', magento_id),
+            ('product_identifier', '=', str(magento_id)),
         ])
 
         return records and records[0].product or None

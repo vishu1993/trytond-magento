@@ -157,7 +157,6 @@ class MagentoOrderState(ModelSQL, ModelView):
                 'channel': Transaction().context.get('magento_channel'),
             })
             order_states_to_create.append(data_map)
-        print order_states_to_create
 
         return cls.create(order_states_to_create)
 

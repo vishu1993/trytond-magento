@@ -94,7 +94,6 @@ class TestSale(TestBase):
     Tests import of sale order
     """
 
-    @unittest.skip(' ')
     def test_0005_import_sale_order_states(self):
         """
         Test the import and creation of sale order states for an channel
@@ -119,7 +118,6 @@ class TestSale(TestBase):
                     state.channel.id, self.channel1.id
                 )
 
-    @unittest.skip(' ')
     def test_0010_check_tryton_state(self):
         """
         Tests if correct tryton state is returned for each magento order state
@@ -417,7 +415,6 @@ class TestSale(TestBase):
                     self.assertEqual(len(order_exported), 1)
                     self.assertEqual(order_exported[0], order)
 
-    @unittest.skip(' ')
     def test_0060_export_order_status_with_last_order_export_time_case1(self):
         """
         Tests that sale cannot be exported if last order export time is
@@ -459,17 +456,17 @@ class TestSale(TestBase):
                 self.assertEqual(len(Sale.search([])), 1)
 
                 export_date = datetime.utcnow() + relativedelta(days=1)
-                self.StoreView.write([self.store_view], {
-                    'last_order_export_time': export_date
-                })
+                self.channel1.magentod_last_order_export_time = export_date
+                self.channel1.save()
 
                 self.assertTrue(
-                    self.store_view.last_order_export_time > order.write_date
+                    self.channel1.magentod_last_order_export_time
+                    > order.write_date
                 )
 
                 with patch('magento.Order', mock_order_api(), create=True):
                     order_exported = \
-                        self.store_view.export_order_status_for_store_view()
+                        self.channel1.export_order_status_for_store_view()
 
                     self.assertEqual(len(order_exported), 0)
 
@@ -643,13 +640,12 @@ class TestSale(TestBase):
                     self.assertEqual(len(order_exported), 1)
                     self.assertEqual(order_exported[0], order)
 
-    @unittest.skip(' ')
     def test_0080_import_sale_order_with_bundle_product(self):
         """
         Tests import of sale order with bundle product using magento data
         """
         Sale = POOL.get('sale.sale')
-        ProductTemplate = POOL.get('product.template')
+        Product = POOL.get('product.product')
         Category = POOL.get('product.category')
         MagentoOrderState = POOL.get('magento.order_state')
 
@@ -658,8 +654,6 @@ class TestSale(TestBase):
 
             with Transaction().set_context({
                 'magento_channel': self.channel1.id,
-                'magento_store_view': self.store_view.id,
-                'magento_website': self.website1.id,
             }):
 
                 MagentoOrderState.create_all_using_magento_data(
@@ -702,22 +696,19 @@ class TestSale(TestBase):
                 )
 
                 # There should be a BoM for the bundle product
-                product_template = \
-                    ProductTemplate.find_or_create_using_magento_id(158)
-                product = product_template.products[0]
+                product = Product.find_or_create_using_magento_id(158)
                 self.assertEqual(len(product.boms), 1)
                 self.assertEqual(
                     len(product.boms[0].bom.inputs), 2
                 )
 
-    @unittest.skip(' ')
     def test_0090_import_sale_order_with_bundle_product_check_duplicate(self):
         """
         Tests import of sale order with bundle product using magento data
         This tests that the duplication of BoMs doesnot happen
         """
         Sale = POOL.get('sale.sale')
-        ProductTemplate = POOL.get('product.template')
+        Product = POOL.get('product.product')
         Category = POOL.get('product.category')
         MagentoOrderState = POOL.get('magento.order_state')
 
@@ -725,8 +716,6 @@ class TestSale(TestBase):
             self.setup_defaults()
             with Transaction().set_context({
                 'magento_channel': self.channel1.id,
-                'magento_store_view': self.store_view.id,
-                'magento_website': self.website1.id,
             }):
 
                 MagentoOrderState.create_all_using_magento_data(
@@ -752,9 +741,7 @@ class TestSale(TestBase):
                         Sale.find_or_create_using_magento_data(order_data)
 
                 # There should be a BoM for the bundle product
-                product_template = \
-                    ProductTemplate.find_or_create_using_magento_id(158)
-                product = product_template.products[0]
+                product = Product.find_or_create_using_magento_id(158)
                 self.assertTrue(len(product.boms), 1)
                 self.assertTrue(len(product.boms[0].bom.inputs), 2)
 
@@ -765,14 +752,12 @@ class TestSale(TestBase):
                     Sale.find_or_create_using_magento_data(order_data)
 
                 # There should be a BoM for the bundle product
-                product_template = \
-                    ProductTemplate.find_or_create_using_magento_id(
-                        158
-                    )
+                product = Product.find_or_create_using_magento_id(
+                    158
+                )
                 self.assertEqual(len(product.boms), 1)
                 self.assertEqual(len(product.boms[0].bom.inputs), 2)
 
-    @unittest.skip(' ')
     def test_0100_import_sale_with_bundle_plus_child_separate(self):
         """
         Tests import of sale order with bundle product using magento data
@@ -787,8 +772,6 @@ class TestSale(TestBase):
             self.setup_defaults()
             with Transaction().set_context({
                 'magento_channel': self.channel1.id,
-                'magento_store_view': self.store_view.id,
-                'magento_website': self.website1.id,
             }):
 
                 MagentoOrderState.create_all_using_magento_data(
