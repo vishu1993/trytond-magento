@@ -370,7 +370,6 @@ class TestSale(TestBase):
                     len(order.lines), len(order_data['items']) + 1
                 )
 
-    @unittest.skip(' ')
     def test_0050_export_order_status_to_magento(self):
         """
         Tests if order status is exported to magento
@@ -413,7 +412,7 @@ class TestSale(TestBase):
 
                 with patch('magento.Order', mock_order_api(), create=True):
                     order_exported = \
-                        self.store_view.export_order_status_for_store_view()
+                        self.channel1.export_order_status_for_store_view()
 
                     self.assertEqual(len(order_exported), 1)
                     self.assertEqual(order_exported[0], order)
@@ -432,8 +431,6 @@ class TestSale(TestBase):
 
             with Transaction().set_context({
                 'magento_channel': self.channel1.id,
-                'magento_store_view': self.store_view.id,
-                'magento_website': self.website1.id,
             }):
 
                 category_tree = load_json('categories', 'category_tree')
@@ -476,7 +473,6 @@ class TestSale(TestBase):
 
                     self.assertEqual(len(order_exported), 0)
 
-    @unittest.skip(' ')
     def test_0050_export_shipment(self):
         """
         Tests if shipments status is being exported for all the shipments
@@ -496,8 +492,6 @@ class TestSale(TestBase):
             self.setup_defaults()
             with Transaction().set_context({
                 'magento_channel': self.channel1.id,
-                'magento_store_view': self.store_view,
-                'magento_website': self.website1.id,
             }):
 
                 MagentoOrderState.create_all_using_magento_data(
@@ -581,7 +575,7 @@ class TestSale(TestBase):
                     'magento.Shipment', mock_shipment_api(), create=True
                 ):
 
-                    self.store_view.export_shipment_status_to_magento()
+                    self.channel1.export_shipment_status_to_magento()
 
                     shipment = Shipment(shipment.id)
                     self.assertTrue(shipment.magento_increment_id)
@@ -592,7 +586,6 @@ class TestSale(TestBase):
                         True
                     )
 
-    @unittest.skip(' ')
     def test_0070_export_order_status_with_last_order_export_time_case2(self):
         """
         Tests that sale can be exported if last order export time is
@@ -606,8 +599,6 @@ class TestSale(TestBase):
 
             with Transaction().set_context({
                 'magento_channel': self.channel1.id,
-                'magento_store_view': self.store_view.id,
-                'magento_website': self.website1.id,
             }):
 
                 category_tree = load_json('categories', 'category_tree')
@@ -636,17 +627,18 @@ class TestSale(TestBase):
                 self.assertEqual(len(Sale.search([])), 1)
 
                 export_date = datetime.utcnow() - relativedelta(days=1)
-                self.StoreView.write([self.store_view], {
-                    'last_order_export_time': export_date
+                self.Channel.write([self.channel1], {
+                    'magentod_last_order_export_time': export_date
                 })
 
                 self.assertTrue(
-                    self.store_view.last_order_export_time < order.write_date
+                    self.channel1.magentod_last_order_export_time
+                    < order.write_date
                 )
 
                 with patch('magento.Order', mock_order_api(), create=True):
                     order_exported = \
-                        self.store_view.export_order_status_for_store_view()
+                        self.channel1.export_order_status_for_store_view()
 
                     self.assertEqual(len(order_exported), 1)
                     self.assertEqual(order_exported[0], order)

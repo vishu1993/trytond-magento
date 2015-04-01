@@ -75,11 +75,13 @@ class Channel:
     magentod_last_order_export_time = fields.DateTime("Last Order Export Time")
 
     #: Last time at which the shipment status was exported to magento
-    last_shipment_export_time = fields.DateTime('Last shipment export time')
+    magento_last_shipment_export_time = fields.DateTime(
+        'Last shipment export time'
+    )
 
     #: Checking this will make sure that only the done shipments which have a
     #: carrier and tracking reference are exported.
-    export_tracking_information = fields.Boolean(
+    magento_export_tracking_information = fields.Boolean(
         'Export tracking information', help='Checking this will make sure'
         ' that only the done shipments which have a carrier and tracking '
         'reference are exported. This will update carrier and tracking '
@@ -300,17 +302,17 @@ class Channel:
 
         return new_sales
 
-    def export_order_status(self, store_views=None):
+    def export_order_status(self, channels=None):
         """
         Export sales orders status to magento.
 
         :param store_views: List of active record of store view
         """
-        if store_views is None:
-            store_views = self.search([])
+        if channels is None:
+            channels = self.search([])
 
-        for store_view in store_views:
-            store_view.export_order_status_for_store_view()
+        for channel in channels:
+            channel.export_order_status_for_store_view()
 
     def export_order_status_for_store_view(self):
         """
@@ -323,14 +325,16 @@ class Channel:
         Sale = Pool().get('sale.sale')
 
         exported_sales = []
-        domain = [('magento_store_view', '=', self.id)]
+        domain = [('channel', '=', self.id)]
 
-        if self.last_order_export_time:
-            domain = [('write_date', '>=', self.last_order_export_time)]
+        if self.magentod_last_order_export_time:
+            domain = [
+                ('write_date', '>=', self.magentod_last_order_export_time)
+            ]
 
         sales = Sale.search(domain)
 
-        self.last_order_export_time = datetime.utcnow()
+        self.magentod_last_order_export_time = datetime.utcnow()
         self.save()
 
         for sale in sales:
@@ -379,29 +383,27 @@ class Channel:
         Sale = Pool().get('sale.sale')
         SaleLine = Pool().get('sale.line')
 
-        channel = self.channel
-
         sale_domain = [
-            ('magento_store_view', '=', self.id),
+            ('channel', '=', self.id),
             ('shipment_state', '=', 'sent'),
             ('magento_id', '!=', None),
             ('shipments', '!=', None),
         ]
 
-        if self.last_shipment_export_time:
+        if self.magento_last_shipment_export_time:
             sale_domain.append(
-                ('write_date', '>=', self.last_shipment_export_time)
+                ('write_date', '>=', self.magento_last_shipment_export_time)
             )
 
         sales = Sale.search(sale_domain)
 
-        self.last_shipment_export_time = datetime.utcnow()
+        self.magento_last_shipment_export_time = datetime.utcnow()
         self.save()
 
         for sale in sales:
             # Get the increment id from the sale reference
             increment_id = sale.reference[
-                len(channel.magento_order_prefix): len(sale.reference)
+                len(self.magento_order_prefix): len(sale.reference)
             ]
 
             for shipment in sale.shipments:
@@ -414,8 +416,8 @@ class Channel:
                         sales.pop(sale)
                         continue
                     with magento.Shipment(
-                        channel.magento_url, channel.magento_api_user,
-                        channel.magento_api_key
+                        self.magento_url, self.magento_api_user,
+                        self.magento_api_key
                     ) as shipment_api:
                         item_qty_map = {}
                         for move in shipment.outgoing_moves:
@@ -437,7 +439,7 @@ class Channel:
                             'magento_increment_id': shipment_increment_id,
                         })
 
-                        if self.export_tracking_information and (
+                        if self.magento_export_tracking_information and (
                             shipment.tracking_number and shipment.carrier
                         ):
                             shipment.export_tracking_info_to_magento()
