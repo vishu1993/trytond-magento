@@ -285,8 +285,6 @@ class TestSale(TestBase):
 
             with Transaction().set_context({
                 'magento_channel': self.channel1.id,
-                'magento_store_view': self.store_view,
-                'magento_website': self.website1.id,
             }):
 
                 category_tree = load_json('categories', 'category_tree')
@@ -322,7 +320,6 @@ class TestSale(TestBase):
                     len(order.lines), len(order_data['items']) + 1
                 )
 
-    @unittest.skip(' ')
     def test_0040_find_or_create_order_using_increment_id(self):
         """
         Tests finding and creating order using increment id
@@ -335,8 +332,6 @@ class TestSale(TestBase):
             self.setup_defaults()
             with Transaction().set_context({
                 'magento_channel': self.channel1.id,
-                'magento_store_view': self.store_view.id,
-                'magento_website': self.website1.id,
             }):
 
                 category_tree = load_json('categories', 'category_tree')
@@ -388,8 +383,6 @@ class TestSale(TestBase):
 
             with Transaction().set_context({
                 'magento_channel': self.channel1.id,
-                'magento_store_view': self.store_view.id,
-                'magento_website': self.website1.id,
             }):
 
                 category_tree = load_json('categories', 'category_tree')
