@@ -104,14 +104,15 @@ class Channel:
         res.append(('magento', 'Magento'))
         return res
 
-    def get_product_listings(self):
-        ""
-        SaleChannelListing = Pool().get('product.product.channel_listing')
-
-        records = SaleChannelListing.search([
-            ('channel', '=', self.id)
-        ])
-        return [res.product for res in records]
+    @classmethod
+    def __setup__(cls):
+        """
+        Setup the class before adding to pool
+        """
+        super(Channel, cls).__setup__()
+        cls._error_messages.update({
+            "missing_magento_channel": 'Magento channel is not in context',
+        })
 
     @staticmethod
     def default_magento_order_prefix():
@@ -212,6 +213,15 @@ class Channel:
                     mag_carriers = order_config_api.get_shipping_methods()
 
                 InstanceCarrier.create_all_using_magento_data(mag_carriers)
+
+    @classmethod
+    def get_current_magento_channel(cls):
+        """Helper method to get the current magento_channel.
+        """
+        channel_id = Transaction().context.get('magento_channel')
+        if not channel_id:
+            cls.raise_user_error('missing_magento_channel')
+        return cls(Transaction().context.get('magento_channel'))
 
     def import_magento_products(self):
         "Import products for this magento channel"

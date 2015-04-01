@@ -199,21 +199,6 @@ class Sale:
             'magento_exception': 'Magento exception in sale %s.'
         })
 
-    @classmethod
-    def validate(cls, sales):
-        super(Sale, cls).validate(sales)
-
-        for sale in sales:
-            sale.check_store_view_channel()
-
-    def check_store_view_channel(self):
-        """
-        Checks if channel of store view is same as channel of sale order
-        """
-        if self.magento_id and \
-                self.magento_store_view.channel != self.channel:
-            self.raise_user_error("invalid_channel")
-
     def get_magento_exceptions(self, name):
         """
         Return magento exceptions related to sale
@@ -412,19 +397,19 @@ class Sale:
         Get sale.line data from magento data.
         """
         SaleLine = Pool().get('sale.line')
-        ProductTemplate = Pool().get('product.template')
+        Product = Pool().get('product.product')
         MagentoException = Pool().get('magento.exception')
+        Channel = Pool().get('sale.channel')
         Uom = Pool().get('product.uom')
-        StoreView = Pool().get('magento.store.store_view')
 
         sale_line = None
         unit, = Uom.search([('name', '=', 'Unit')])
         if not item['parent_item_id']:
             # If its a top level product, create it
             try:
-                product = ProductTemplate.find_or_create_using_magento_id(
+                product = Product.find_or_create_using_magento_id(
                     item['product_id'],
-                ).products[0]
+                )
             except xmlrpclib.Fault, exception:
                 if exception.faultCode == 101:
                     # Case when product doesnot exist on magento
@@ -449,8 +434,8 @@ class Sale:
                 'product': product,
             })
             if item.get('tax_percent') and Decimal(item.get('tax_percent')):
-                store_view = StoreView.get_current_store_view()
-                taxes = store_view.get_taxes(
+                channel = Channel.get_current_magento_channel()
+                taxes = channel.get_taxes(
                     Decimal(item['tax_percent']) / 100
                 )
                 sale_line.taxes = taxes
