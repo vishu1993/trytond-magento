@@ -19,7 +19,7 @@ from trytond.pyson import Eval
 
 
 ROOT_JSON_FOLDER = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), 'json'
+    os.path.dirname(os.path.abspath(__file__)), 'json_data'
 )
 
 
@@ -28,7 +28,7 @@ def load_json(resource, filename):
     python objects
 
     On filesystem, the files are kept in this format:
-        json----
+        json_data----
               |
             resource----
                        |

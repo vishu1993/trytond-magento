@@ -54,6 +54,8 @@ class Channel:
             ('company', '=', Eval('company')),
         ], depends=['company'], required=True
     ))
+
+    # website
     magento_website_id = fields.Integer(
         'Website ID', readonly=True, required=True
     )
