@@ -271,7 +271,6 @@ class TestSale(TestBase):
                     len(order.lines), len(order_data['items']) + 1
                 )
 
-    @unittest.skip(' ')
     def test_0035_import_sale_order_with_products_with_processing(self):
         """
         Tests import of sale order using magento data with magento state as
