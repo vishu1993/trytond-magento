@@ -457,7 +457,7 @@ class Product:
 
     def export_to_magento(self, category):
         """Export the current product to the magento category corresponding to
-        the given `category` under the current website in context
+        the given `category` under the current magento_channel in context
 
         :param category: Active record of category to which the product has
                          to be exported
@@ -604,10 +604,10 @@ class UpdateCatalog(Wizard):
 
     def update_products(self, channel):
         """
-        Updates products for current website
+        Updates products for current magento_channel
 
-        :param website: Browse record of website
-        :return: List of product templates IDs
+        :param channel: Browse record of channel
+        :return: List of product IDs
         """
         products = []
         with Transaction().set_context({'magento_channel': channel.id}):
@@ -645,12 +645,12 @@ class ImportCatalog(Wizard):
     def do_import_(self, action):
         """Handles the transition"""
 
-        Website = Pool().get('magento.instance.website')
+        Channel = Pool().get('sale.channel')
 
-        website = Website(Transaction().context.get('active_id'))
+        channel = Channel(Transaction().context.get('active_id'))
 
-        self.import_category_tree(website)
-        product_ids = self.import_products(website)
+        self.import_category_tree(channel)
+        product_ids = self.import_products(channel)
         action['pyson_domain'] = PYSONEncoder().encode(
             [('id', 'in', product_ids)])
         return action, {}
@@ -658,7 +658,7 @@ class ImportCatalog(Wizard):
     def transition_import_(self):
         return 'end'
 
-    def import_category_tree(self, website):
+    def import_category_tree(self, channel):
         """
         Imports the category tree and creates categories in a hierarchy same as
         that on Magento
@@ -667,14 +667,13 @@ class ImportCatalog(Wizard):
         """
         Category = Pool().get('product.category')
 
-        channel = website.channel
         Transaction().set_context({'magento_channel': channel.id})
 
         with magento.Category(
             channel.magento_url, channel.magento_api_user,
             channel.magento_api_key
         ) as category_api:
-            category_tree = category_api.tree(website.magento_root_category_id)
+            category_tree = category_api.tree(channel.magento_root_category_id)
             Category.create_tree_using_magento_data(category_tree)
 
     def import_products(self, channel):
@@ -709,30 +708,6 @@ class ExportCatalogStart(ModelView):
     'Export Catalog View'
     __name__ = 'magento.website.export_catalog.start'
 
-    @classmethod
-    def get_attribute_sets(cls):
-        """Get the list of attribute sets from magento for the current website
-
-        :return: Tuple of attribute sets where each tuple consists of (ID,Name)
-        """
-        Website = Pool().get('magento.instance.website')
-
-        if not Transaction().context.get('active_id'):
-            return []
-
-        website = Website(Transaction().context['active_id'])
-        channel = website.channel
-
-        with magento.ProductAttributeSet(
-            channel.magento_url, channel.magento_api_user,
-            channel.magento_api_key
-        ) as attribute_set_api:
-            attribute_sets = attribute_set_api.list()
-
-        return [(
-            attribute_set['set_id'], attribute_set['name']
-        ) for attribute_set in attribute_sets]
-
     category = fields.Many2One(
         'product.category', 'Magento Category', required=True,
         domain=[('magento_ids', 'not in', [])],
@@ -746,9 +721,32 @@ class ExportCatalogStart(ModelView):
     )
 
     @classmethod
+    def get_attribute_sets(cls):
+        """Get the list of attribute sets from magento for the current channel
+
+        :return: Tuple of attribute sets where each tuple consists of (ID,Name)
+        """
+        Channel = Pool().get('sale.channel')
+
+        if not Transaction().context.get('active_id'):
+            return []
+
+        channel = Channel(Transaction().context['active_id'])
+
+        with magento.ProductAttributeSet(
+            channel.magento_url, channel.magento_api_user,
+            channel.magento_api_key
+        ) as attribute_set_api:
+            attribute_sets = attribute_set_api.list()
+
+        return [(
+            attribute_set['set_id'], attribute_set['name']
+        ) for attribute_set in attribute_sets]
+
+    @classmethod
     def fields_view_get(cls, view_id=None, view_type='form'):
         """This method is overridden to populate the selection field for
-        attribute_set with the attribute sets from the current website's
+        attribute_set with the attribute sets from the current channel's
         counterpart on magento.
         This overridding has to be done because `active_id` is not available
         if the meth:get_attribute_sets is called directly from the field.
@@ -761,7 +759,7 @@ class ExportCatalogStart(ModelView):
 class ExportCatalog(Wizard):
     '''Export catalog
 
-    Export the products selected to the selected category for this website
+    Export the products selected to the selected category for this channel
     '''
     __name__ = 'magento.website.export_catalog'
 
@@ -778,12 +776,12 @@ class ExportCatalog(Wizard):
         """
         Export the products selected to the selected category for this website
         """
-        Website = Pool().get('magento.instance.website')
+        Channel = Pool().get('sale.channel')
 
-        website = Website(Transaction().context['active_id'])
+        channel = Channel(Transaction().context['active_id'])
 
         with Transaction().set_context({
-            'magento_website': website.id,
+            'magento_channel': channel.id,
             'magento_attribute_set': self.start.attribute_set,
         }):
             for product in self.start.products:

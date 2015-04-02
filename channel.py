@@ -73,8 +73,8 @@ class Channel:
     magento_store_id = fields.Integer(
         'Store ID', readonly=True, required=True
     )
-    magentod_last_order_import_time = fields.DateTime('Last Order Import Time')
-    magentod_last_order_export_time = fields.DateTime("Last Order Export Time")
+    magento_last_order_import_time = fields.DateTime('Last Order Import Time')
+    magento_last_order_export_time = fields.DateTime("Last Order Export Time")
 
     #: Last time at which the shipment status was exported to magento
     magento_last_shipment_export_time = fields.DateTime(
@@ -126,9 +126,9 @@ class Channel:
         return 'mag_'
 
     @staticmethod
-    def default_default_uom():
+    def default_magento_default_uom():
         """
-        Sets default product uom for website
+        Sets default product uom for channel
         """
         ProductUom = Pool().get('product.uom')
 
@@ -329,14 +329,14 @@ class Channel:
         exported_sales = []
         domain = [('channel', '=', self.id)]
 
-        if self.magentod_last_order_export_time:
+        if self.magento_last_order_export_time:
             domain = [
-                ('write_date', '>=', self.magentod_last_order_export_time)
+                ('write_date', '>=', self.magento_last_order_export_time)
             ]
 
         sales = Sale.search(domain)
 
-        self.magentod_last_order_export_time = datetime.utcnow()
+        self.magento_last_order_export_time = datetime.utcnow()
         self.save()
 
         for sale in sales:
@@ -459,7 +459,7 @@ class Channel:
     def export_inventory_to_magento(self):
         """
         Exports stock data of products from tryton to magento for this
-        website
+        channel
         :return: List of product templates
         """
         Location = Pool().get('stock.location')
