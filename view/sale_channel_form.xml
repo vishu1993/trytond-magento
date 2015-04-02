@@ -22,10 +22,10 @@
                     <field name="magento_store_id"/>
                 </page>            
                 <page string="Orders" id="order_states" col="6">
-                    <label name="magentod_last_order_import_time"/>
-                    <field name="magentod_last_order_import_time"/>
-                    <label name="magentod_last_order_export_time"/>
-                    <field name="magentod_last_order_export_time"/>
+                    <label name="magento_last_order_import_time"/>
+                    <field name="magento_last_order_import_time"/>
+                    <label name="magento_last_order_export_time"/>
+                    <field name="magento_last_order_export_time"/>
                     <label name="magento_order_prefix"/>
                     <field name="magento_order_prefix"/>
                     <field name="magento_order_states"  colspan="8"/>
@@ -49,15 +49,16 @@
                      <field name="magento_price_tiers" colspan="8"/>
                 </page>
                 <page string="Others" id="others">
-                    <label name="last_shipment_export_time"/>
-                    <field name="last_shipment_export_time"/>
-                    <label name="export_tracking_information"/>
-                    <field name="export_tracking_information"/>
+                    <label name="magento_last_shipment_export_time"/>
+                    <field name="magento_last_shipment_export_time"/>
+                    <label name="magento_export_tracking_information"/>
+                    <field name="magento_export_tracking_information"/>
                 </page>
                 <page string="Taxes" id="taxes">
                     <field name="magento_taxes" colspan="8"/>
                 </page>   
-            </notebook>         
+            </notebook>
+            <button string="Test Connection" name="test_connection" colspan="2"/>         
         </page> 
     </xpath>
 </data>

@@ -15,10 +15,12 @@ from trytond.transaction import Transaction
 from trytond.pyson import Eval
 from trytond.model import ModelView, fields
 from .api import OrderConfig, Core
+from trytond.wizard import Wizard, StateView, Button, StateAction
 
 __metaclass__ = PoolMeta
-__all__ = ['Channel']
-
+__all__ = [
+    'Channel', 'TestConnectionStart', 'TestConnection'
+    ]
 
 class Channel:
     """
@@ -31,15 +33,15 @@ class Channel:
     magento_api_user = fields.Char("API User", required=True)
     magento_api_key = fields.Char("API Key", required=True)
     magento_order_states = fields.One2Many(
-        "magento.order_state", "instance", "Order States"
+        "magento.order_state", "channel", "Order States"
     )
     magento_carriers = fields.One2Many(
-        "magento.instance.carrier", "instance", "Carriers / Shipping Methods"
+        "magento.instance.carrier", "channel", "Carriers / Shipping Methods"
     )
     magento_order_prefix = fields.Char(
         'Sale Order Prefix',
         help="This helps to distinguish between orders from different "
-            "instances"
+            "channels"
     )
     magento_default_account_expense = fields.Property(fields.Many2One(
         'account.account', 'Account Expense', domain=[
@@ -57,21 +59,21 @@ class Channel:
 
     # website
     magento_website_id = fields.Integer(
-        'Website ID', readonly=True, required=True
+        'Website ID', readonly=True
     )
     magento_website_name = fields.Char(
-        'Website Name', readonly=True, required=True
+        'Website Name', readonly=True
     )
     magento_website_code = fields.Char(
-        'Website Code', required=True, readonly=True
+        'Website Code', readonly=True
     )
     magento_default_uom = fields.Many2One('product.uom', 'Default Product UOM')
     magento_root_category_id = fields.Integer(
         'Root Category ID', required=True
     )
-    magento_store_name = fields.Char('Store Name', required=True)
+    magento_store_name = fields.Char('Store Name', readonly=True)
     magento_store_id = fields.Integer(
-        'Store ID', readonly=True, required=True
+        'Store ID', readonly=True
     )
     magento_last_order_import_time = fields.DateTime('Last Order Import Time')
     magento_last_order_export_time = fields.DateTime("Last Order Export Time")
@@ -98,6 +100,34 @@ class Channel:
     product_listings = fields.One2Many(
         'product.product.channel_listing', 'channel', 'Product Listings',
     )
+    
+    @classmethod
+    def __setup__(cls):
+        """
+        Setup the class before adding to pool
+        """
+        super(Channel, cls).__setup__()
+        cls._sql_constraints += [
+            (
+                'unique_magento_channel', 'UNIQUE(magento_url, magento_website_id, magento_store_id)',
+                'This store is already added'
+            )
+        ]
+        cls._error_messages.update({
+            "connection_error": "Incorrect API Settings! \n"
+                "Please check and correct the API settings on channel.",
+            "multiple_channels": 'Selected operation can be done only for one'
+                ' channel at a time',
+        })
+        cls._buttons.update({
+            'test_connection': {},
+            'import_websites': {},
+            'import_order_states': {},
+            'import_carriers': {},
+        })
+        cls._error_messages.update({
+            "missing_magento_channel": 'Magento channel is not in context',
+        })
 
     @classmethod
     def get_source(cls):
@@ -107,16 +137,6 @@ class Channel:
         res = super(Channel, cls).get_source()
         res.append(('magento', 'Magento'))
         return res
-
-    @classmethod
-    def __setup__(cls):
-        """
-        Setup the class before adding to pool
-        """
-        super(Channel, cls).__setup__()
-        cls._error_messages.update({
-            "missing_magento_channel": 'Magento channel is not in context',
-        })
 
     @staticmethod
     def default_magento_order_prefix():
@@ -155,14 +175,14 @@ class Channel:
         """
         Import order states for magento channel
 
-        :param channels: List of active records of instances
+        :param channels: List of active records of channels
         """
         OrderState = Pool().get('magento.order_state')
 
         for channel in channels:
 
             Transaction().context.update({
-                'magento_instance': channel.id
+                'magento_channel': channel.id
             })
 
             # Import order states
@@ -179,16 +199,16 @@ class Channel:
         """
         Test magento connection and display appropriate message to user
 
-        :param instances: Active record list of magento instance
+        :param channels: Active record list of magento channels
         """
         try:
-            instance, = channels
+            channel, = channels
         except ValueError:
-            cls.raise_user_error('multiple_instances')
+            cls.raise_user_error('multiple_channel')
 
         try:
             with magento.API(
-                instance.url, instance.api_user, instance.api_key
+                channel.magento_url, channel.magento_api_user, channel.magento_api_key
             ):
                 return
         except (
@@ -198,21 +218,21 @@ class Channel:
 
     @classmethod
     @ModelView.button_action('magento.wizard_import_carriers')
-    def import_carriers(cls, instances):
+    def import_carriers(cls, channels):
         """
-        Import carriers/shipping methods from magento for instances
+        Import carriers/shipping methods from magento for channels
 
-        :param instances: Active record list of magento instances
+        :param channels: Active record list of magento channels
         """
         InstanceCarrier = Pool().get('magento.instance.carrier')
 
-        for instance in instances:
+        for channel in channels:
 
             with Transaction().set_context({
-                'magento_instance': instance.id
+                'magento_channel': channel.id
             }):
                 with OrderConfig(
-                    instance.url, instance.api_user, instance.api_key
+                    channel.url, channel.api_user, channel.api_key
                 ) as order_config_api:
                     mag_carriers = order_config_api.get_shipping_methods()
 
@@ -488,3 +508,30 @@ class Channel:
                     )
 
         return products
+
+class TestConnection(Wizard):
+    """
+    Test Connection Wizard
+
+    Test the connection to magento channel(s)
+    """
+    __name__ = 'magento.wizard_test_connection'
+
+    start = StateView(
+        'magento.wizard_test_connection.start',
+        'magento.wizard_test_connection_view_form',
+        [
+            Button('Ok', 'end', 'tryton-ok'),
+        ]
+    )
+
+    def default_start(self, data):
+        """Test the connection and show the user appropriate message
+        :param data: Wizard data
+        """
+        return {}  
+
+class TestConnectionStart(ModelView):
+    "Test Connection"
+    __name__ = 'magento.wizard_test_connection.start'
+
